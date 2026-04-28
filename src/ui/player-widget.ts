@@ -207,7 +207,6 @@ function button(
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log("Murmur: click", className, "actions=", actions !== null);
     try {
       onclick();
     } catch (err) {

@@ -7,7 +7,7 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
-  "author": "Kauri Markkanen",
+  "author": "@kaurimark",
   "license": "MIT",
   "devDependencies": {
     "@codemirror/state": "^6.0.0",

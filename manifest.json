@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
   "description": "Read your notes aloud with karaoke-style highlighting.",
-  "author": "Kauri Markkanen",
+  "author": "@kaurimark",
   "authorUrl": "https://github.com/kaurimark",
   "isDesktopOnly": true
 }

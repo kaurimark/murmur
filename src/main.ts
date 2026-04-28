@@ -125,10 +125,8 @@ export default class MurmurPlugin extends Plugin {
   }
 
   private readSmart() {
-    console.log("Murmur: readSmart called");
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) {
-      console.log("Murmur: readSmart bailed — no markdown view");
       new Notice("Murmur: open a markdown note first.");
       return;
     }
@@ -179,6 +177,7 @@ export default class MurmurPlugin extends Plugin {
   private handlePlaybackEnd() {
     this.clearHighlight();
     this.currentPlayerState = null;
+    this.player = null;
     this.refreshWidget();
   }
 
