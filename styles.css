@@ -1,0 +1,64 @@
+.murmur-active {
+  background-color: rgba(255, 213, 0, 0.45);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  box-shadow: 0 0 0 1px rgba(255, 195, 0, 0.3);
+}
+
+.murmur-widget-outer {
+  padding-bottom: 24px;
+  margin: 0;
+}
+
+.murmur-widget {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: 0;
+  line-height: 1;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+.murmur-widget-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.murmur-widget-btn:hover:not(:disabled) {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.murmur-widget-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.murmur-widget-counter {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.murmur-widget-speed {
+  margin-left: auto;
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}

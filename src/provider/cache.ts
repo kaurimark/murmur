@@ -1,0 +1,181 @@
+import { App, normalizePath } from "obsidian";
+import type {
+  CharAlignment,
+  TTSGenerateOptions,
+  TTSProvider,
+  TTSResult,
+} from "./types";
+
+interface IndexEntry {
+  bytes: number;
+  lastUsed: number;
+}
+
+interface IndexFile {
+  totalBytes: number;
+  entries: Record<string, IndexEntry>;
+}
+
+export class AudioCache {
+  private cacheDir: string;
+  private indexPath: string;
+  private index: IndexFile = { totalBytes: 0, entries: {} };
+  private maxBytes: number;
+
+  constructor(
+    private app: App,
+    manifestDir: string,
+    maxMB: number,
+  ) {
+    this.cacheDir = normalizePath(`${manifestDir}/cache`);
+    this.indexPath = normalizePath(`${this.cacheDir}/index.json`);
+    this.maxBytes = maxMB * 1024 * 1024;
+  }
+
+  setMaxMB(mb: number): void {
+    this.maxBytes = mb * 1024 * 1024;
+  }
+
+  async init(): Promise<void> {
+    const adapter = this.app.vault.adapter;
+    if (!(await adapter.exists(this.cacheDir))) {
+      await adapter.mkdir(this.cacheDir);
+    }
+    if (await adapter.exists(this.indexPath)) {
+      try {
+        const text = await adapter.read(this.indexPath);
+        this.index = JSON.parse(text);
+      } catch {
+        this.index = { totalBytes: 0, entries: {} };
+      }
+    }
+  }
+
+  async get(
+    hash: string,
+  ): Promise<{ audio: ArrayBuffer; alignment: CharAlignment } | null> {
+    const entry = this.index.entries[hash];
+    if (!entry) return null;
+
+    const adapter = this.app.vault.adapter;
+    const audioPath = normalizePath(`${this.cacheDir}/${hash}.mp3`);
+    const alignPath = normalizePath(`${this.cacheDir}/${hash}.json`);
+
+    if (!(await adapter.exists(audioPath)) || !(await adapter.exists(alignPath))) {
+      delete this.index.entries[hash];
+      this.index.totalBytes = Math.max(0, this.index.totalBytes - entry.bytes);
+      await this.saveIndex();
+      return null;
+    }
+
+    const audio = await adapter.readBinary(audioPath);
+    const alignmentJson = await adapter.read(alignPath);
+    const alignment = JSON.parse(alignmentJson) as CharAlignment;
+
+    entry.lastUsed = Date.now();
+    await this.saveIndex();
+
+    return { audio, alignment };
+  }
+
+  async set(
+    hash: string,
+    audio: ArrayBuffer,
+    alignment: CharAlignment,
+  ): Promise<void> {
+    const adapter = this.app.vault.adapter;
+    const audioPath = normalizePath(`${this.cacheDir}/${hash}.mp3`);
+    const alignPath = normalizePath(`${this.cacheDir}/${hash}.json`);
+    const alignmentJson = JSON.stringify(alignment);
+    const totalBytes = audio.byteLength + alignmentJson.length;
+
+    await adapter.writeBinary(audioPath, audio);
+    await adapter.write(alignPath, alignmentJson);
+
+    const prev = this.index.entries[hash];
+    if (prev) this.index.totalBytes -= prev.bytes;
+
+    this.index.entries[hash] = { bytes: totalBytes, lastUsed: Date.now() };
+    this.index.totalBytes += totalBytes;
+
+    await this.evictIfNeeded();
+    await this.saveIndex();
+  }
+
+  async clear(): Promise<void> {
+    const adapter = this.app.vault.adapter;
+    for (const hash of Object.keys(this.index.entries)) {
+      try {
+        await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.mp3`));
+      } catch {}
+      try {
+        await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.json`));
+      } catch {}
+    }
+    this.index = { totalBytes: 0, entries: {} };
+    await this.saveIndex();
+  }
+
+  size(): { bytes: number; entries: number } {
+    return {
+      bytes: this.index.totalBytes,
+      entries: Object.keys(this.index.entries).length,
+    };
+  }
+
+  private async evictIfNeeded(): Promise<void> {
+    if (this.index.totalBytes <= this.maxBytes) return;
+    const adapter = this.app.vault.adapter;
+    const sorted = Object.entries(this.index.entries).sort(
+      (a, b) => a[1].lastUsed - b[1].lastUsed,
+    );
+    for (const [hash, entry] of sorted) {
+      if (this.index.totalBytes <= this.maxBytes) break;
+      try {
+        await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.mp3`));
+      } catch {}
+      try {
+        await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.json`));
+      } catch {}
+      delete this.index.entries[hash];
+      this.index.totalBytes = Math.max(0, this.index.totalBytes - entry.bytes);
+    }
+  }
+
+  private async saveIndex(): Promise<void> {
+    await this.app.vault.adapter.write(
+      this.indexPath,
+      JSON.stringify(this.index),
+    );
+  }
+}
+
+export class CachedTTSProvider implements TTSProvider {
+  constructor(
+    private base: TTSProvider,
+    private cache: AudioCache,
+  ) {}
+
+  async generate(opts: TTSGenerateOptions): Promise<TTSResult> {
+    const hash = await hashKey(opts.text, opts.voiceId, opts.modelId);
+    const hit = await this.cache.get(hash);
+    if (hit) return hit;
+
+    const result = await this.base.generate(opts);
+    await this.cache.set(hash, result.audio, result.alignment);
+    return result;
+  }
+}
+
+async function hashKey(
+  text: string,
+  voiceId: string,
+  modelId: string,
+): Promise<string> {
+  const data = `${voiceId}|${modelId}|${text}`;
+  const buf = new TextEncoder().encode(data);
+  const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hashBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
