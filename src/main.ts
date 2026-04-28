@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Plugin } from "obsidian";
+import { MarkdownView, Notice, Plugin, TFile } from "obsidian";
 import type { EditorView } from "@codemirror/view";
 import { ElevenLabsProvider } from "./provider/elevenlabs";
 import { AudioCache, CachedTTSProvider } from "./provider/cache";
@@ -24,6 +24,7 @@ export default class MurmurPlugin extends Plugin {
   cache!: AudioCache;
   private player: SegmentPlayer | null = null;
   private currentPlayerState: WidgetState | null = null;
+  private playingNotePath: string | null = null;
   private lastPlaybackRate = 1;
   private lastHighlight: { from: number; to: number } | null = null;
 
@@ -52,6 +53,7 @@ export default class MurmurPlugin extends Plugin {
         this.lastPlaybackRate = rate;
         this.player?.setSpeed(rate);
       },
+      openPlayingNote: () => this.openPlayingNote(),
     });
 
     this.registerEvent(
@@ -104,7 +106,7 @@ export default class MurmurPlugin extends Plugin {
     if (!view) return;
     let state: WidgetState | null;
     if (this.currentPlayerState) {
-      state = this.currentPlayerState;
+      state = { ...this.currentPlayerState, otherNoteName: this.computeOtherNoteName() };
     } else if (this.settings.alwaysShowWidget) {
       state = {
         status: "idle",
@@ -116,6 +118,21 @@ export default class MurmurPlugin extends Plugin {
       state = null;
     }
     view.dispatch({ effects: setWidgetState.of(state) });
+  }
+
+  private computeOtherNoteName(): string | undefined {
+    if (!this.playingNotePath) return undefined;
+    const activePath = this.app.workspace.getActiveFile()?.path;
+    if (!activePath || activePath === this.playingNotePath) return undefined;
+    return basename(this.playingNotePath);
+  }
+
+  private openPlayingNote(): void {
+    if (!this.playingNotePath) return;
+    const file = this.app.vault.getAbstractFileByPath(this.playingNotePath);
+    if (file instanceof TFile) {
+      void this.app.workspace.getLeaf(false).openFile(file);
+    }
   }
 
   private getActiveEditorView(): EditorView | null {
@@ -130,6 +147,7 @@ export default class MurmurPlugin extends Plugin {
       new Notice("Murmur: open a markdown note first.");
       return;
     }
+    this.playingNotePath = view.file?.path ?? null;
     const selection = view.editor.getSelection();
     const text = selection.trim() ? selection : view.editor.getValue();
     this.readText(text);
@@ -178,6 +196,7 @@ export default class MurmurPlugin extends Plugin {
     this.clearHighlight();
     this.currentPlayerState = null;
     this.player = null;
+    this.playingNotePath = null;
     this.refreshWidget();
   }
 
@@ -274,4 +293,10 @@ function findCurrentWord(
 
 function isWordBoundary(char: string): boolean {
   return /[\s.,;:!?()[\]{}—–-]/.test(char);
+}
+
+function basename(path: string): string {
+  const slash = path.lastIndexOf("/");
+  const file = slash >= 0 ? path.slice(slash + 1) : path;
+  return file.replace(/\.md$/i, "");
 }

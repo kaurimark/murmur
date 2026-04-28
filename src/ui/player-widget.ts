@@ -12,6 +12,7 @@ export interface WidgetState {
   segmentIndex: number;
   totalSegments: number;
   playbackRate: number;
+  otherNoteName?: string;
 }
 
 export interface WidgetActions {
@@ -20,6 +21,7 @@ export interface WidgetActions {
   next: () => void;
   prev: () => void;
   setSpeed: (rate: number) => void;
+  openPlayingNote: () => void;
 }
 
 let actions: WidgetActions | null = null;
@@ -88,7 +90,8 @@ class PlayerWidget extends WidgetType {
       this.state.status === other.state.status &&
       this.state.segmentIndex === other.state.segmentIndex &&
       this.state.totalSegments === other.state.totalSegments &&
-      this.state.playbackRate === other.state.playbackRate
+      this.state.playbackRate === other.state.playbackRate &&
+      this.state.otherNoteName === other.state.otherNoteName
     );
   }
 
@@ -127,6 +130,16 @@ function createSkeleton(): HTMLElement {
   const counter = document.createElement("span");
   counter.className = "murmur-widget-counter";
 
+  const otherNote = document.createElement("a");
+  otherNote.className = "murmur-widget-other-note";
+  otherNote.title = "Switch to the playing note";
+  otherNote.addEventListener("mousedown", (e) => e.stopPropagation());
+  otherNote.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    actions?.openPlayingNote();
+  });
+
   const speedSelect = document.createElement("select");
   speedSelect.className = "murmur-widget-speed";
   for (const s of SPEED_OPTIONS) {
@@ -142,7 +155,7 @@ function createSkeleton(): HTMLElement {
     if (Number.isFinite(rate)) actions?.setSpeed(rate);
   };
 
-  dom.append(prevBtn, playPauseBtn, nextBtn, stopBtn, counter, speedSelect);
+  dom.append(prevBtn, playPauseBtn, nextBtn, stopBtn, counter, otherNote, speedSelect);
   outer.appendChild(dom);
   return outer;
 }
@@ -167,8 +180,11 @@ function renderState(outer: HTMLElement, state: WidgetState): void {
   const speedSelect = dom.querySelector(
     ".murmur-widget-speed",
   ) as HTMLSelectElement | null;
+  const otherNote = dom.querySelector(
+    ".murmur-widget-other-note",
+  ) as HTMLAnchorElement | null;
 
-  if (!playPauseBtn || !prevBtn || !nextBtn || !stopBtn || !counter || !speedSelect) {
+  if (!playPauseBtn || !prevBtn || !nextBtn || !stopBtn || !counter || !speedSelect || !otherNote) {
     return;
   }
 
@@ -176,6 +192,14 @@ function renderState(outer: HTMLElement, state: WidgetState): void {
     counter.textContent = `${state.segmentIndex + 1} / ${state.totalSegments}`;
   } else {
     counter.textContent = "";
+  }
+
+  if (state.otherNoteName) {
+    otherNote.textContent = `↗ ${state.otherNoteName}`;
+    otherNote.style.display = "";
+  } else {
+    otherNote.textContent = "";
+    otherNote.style.display = "none";
   }
 
   if (speedSelect.value !== String(state.playbackRate)) {

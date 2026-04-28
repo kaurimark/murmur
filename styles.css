@@ -52,6 +52,18 @@
   color: var(--text-muted);
 }
 
+.murmur-widget-other-note {
+  margin-left: 6px;
+  color: var(--text-accent);
+  cursor: pointer;
+  text-decoration: none;
+  font-style: italic;
+}
+
+.murmur-widget-other-note:hover {
+  text-decoration: underline;
+}
+
 .murmur-widget-speed {
   margin-left: auto;
   background-color: var(--background-primary);
