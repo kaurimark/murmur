@@ -227,6 +227,8 @@ export class MurmurSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+
+    this.renderPreviewButton();
   }
 
   private renderOpenAI(): void {
@@ -269,5 +271,30 @@ export class MurmurSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         });
       });
+
+    this.renderPreviewButton();
+  }
+
+  private renderPreviewButton(): void {
+    new Setting(this.containerEl)
+      .setName("Preview voice")
+      .setDesc(
+        "Play a short sample with the current voice and model. Useful for tasting voices before committing.",
+      )
+      .addButton((btn) =>
+        btn
+          .setButtonText("Preview")
+          .onClick(async () => {
+            btn.setDisabled(true);
+            const original = "Preview";
+            btn.setButtonText("Loading…");
+            try {
+              await this.plugin.previewVoice();
+            } finally {
+              btn.setDisabled(false);
+              btn.setButtonText(original);
+            }
+          }),
+      );
   }
 }

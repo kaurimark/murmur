@@ -177,23 +177,14 @@ User feedback: TTS that starts within 500ms of the trigger feels mechanical. Hum
 
 ## 11. Alternative TTS providers
 
-ElevenLabs is the v1 default and works well, but at scale it's expensive. Cheaper alternatives matter for power users.
+ElevenLabs and OpenAI are now both supported (see `src/provider/`). Other candidates worth evaluating:
 
-**Candidates** (already evaluated in plan.md research pass):
-- **Cartesia Sonic** — closest to ElevenLabs in quality, native word timestamps, streaming. Strongest substitute.
+- **Cartesia Sonic** — closest to ElevenLabs in quality, native word timestamps via streaming endpoint. Strongest premium substitute. Should be next.
 - **Microsoft Azure Neural TTS** — most mature word-boundary support, generous free tier, very reliable but less expressive.
-- **OpenAI TTS** — quality good; word timestamps were historically the weak spot. Verify current state before integrating.
 - **Play.HT, LMNT, Deepgram Aura** — second-tier options.
+- **Web Speech API / macOS `say`** — local-only, free, no network. Privacy story for backlog #1 (agent narration of sensitive content).
 
-**Prereqs.** Stable v1 of read-aloud + widget UI. The `TTSProvider` interface is already in place, so adding a provider is mostly adapter work — implement the same `with-timestamps` shape over the new API.
-
----
-
-## 12a. Always-show widget click bug
-
-When "Always show player" is on and the user navigates to a fresh note, clicking the play button on the idle widget doesn't trigger playback — only the hotkey works. Multiple fix attempts (mousedown handling, preventDefault tweaks, try/catch with logging) haven't reproduced or fully resolved it. Console error logging is now in place; next time it happens, capture DevTools console output to see whether the click handler fires at all, whether `actions` is null, or whether `readSmart` errors out.
-
-Possible causes still to investigate: CM6 block-widget event interception, focus-stealing on first interaction, stale `getActiveViewOfType` reference in a not-fully-mounted view.
+The `TTSProvider` interface + multi-provider settings shape is already in place — adding a new provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
 
 ---
 

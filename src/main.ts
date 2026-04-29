@@ -217,6 +217,47 @@ export default class MurmurPlugin extends Plugin {
     return new ElevenLabsProvider(cfg.apiKey);
   }
 
+  async previewVoice(): Promise<void> {
+    const provider = this.buildProvider();
+    if (!provider) {
+      const name =
+        this.settings.provider === "openai" ? "OpenAI" : "ElevenLabs";
+      new Notice(`murmur: enter your ${name} API key first.`);
+      return;
+    }
+    const cfg = this.activeProviderConfig();
+    const sample =
+      "Hello. This is a preview of the selected voice and model.";
+    let result;
+    try {
+      result = await provider.generate({
+        text: sample,
+        voiceId: cfg.voiceId,
+        modelId: cfg.modelId,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      new Notice(`murmur: ${msg}`);
+      return;
+    }
+    const blob = new Blob([result.audio], { type: "audio/mpeg" });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.addEventListener("ended", () => URL.revokeObjectURL(url), {
+      once: true,
+    });
+    audio.addEventListener("error", () => URL.revokeObjectURL(url), {
+      once: true,
+    });
+    try {
+      await audio.play();
+    } catch (err) {
+      URL.revokeObjectURL(url);
+      const msg = err instanceof Error ? err.message : String(err);
+      new Notice(`murmur: preview playback failed — ${msg}`);
+    }
+  }
+
   private readText(text: string, notePath: string | null) {
     const providerConfig = this.activeProviderConfig();
     if (!providerConfig.apiKey) {
