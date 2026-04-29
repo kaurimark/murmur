@@ -18,6 +18,25 @@
   box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.18),
     0 1px 2px rgba(0, 0, 0, 0.1);
+  cursor: grab;
+}
+
+/* Buttons + scrubber inside the floating widget keep their own cursor. */
+.murmur-floating .murmur-chip button,
+.murmur-floating .murmur-deck button,
+.murmur-floating .murmur-chip-track,
+.murmur-floating .murmur-deck-track,
+.murmur-floating .murmur-chip-other-label,
+.murmur-floating .murmur-deck-other-label {
+  cursor: pointer;
+}
+
+/* Cursor while actively dragging — applied to body so it persists across the
+ * drag even when the pointer crosses out of the widget. */
+.murmur-floating-dragging,
+.murmur-floating-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
 .murmur-active {
@@ -556,10 +575,12 @@
 
 .murmur-deck[data-state="other"] .murmur-deck-skip,
 .murmur-deck[data-state="other"] .murmur-deck-time,
-.murmur-deck[data-state="other"] .murmur-deck-speed,
-.murmur-deck[data-state="other"] .murmur-deck-close {
+.murmur-deck[data-state="other"] .murmur-deck-speed {
   display: none;
 }
+/* Close stays visible in other-note state — gives a remote stop affordance
+ * so the user can stop narration without first navigating to the playing
+ * note. */
 
 .murmur-deck[data-state="other"] .murmur-deck-other-label {
   display: block;

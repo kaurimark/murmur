@@ -51,11 +51,13 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   cartesia: {
     apiKey: "",
     voiceId: "",
-    modelId: "sonic-2",
+    modelId: "sonic-3",
   },
   cacheSizeMB: 500,
   alwaysShowWidget: false,
-  widgetTheme: "inline-chip",
+  // Tape-deck is the better default — characterful, larger, more usable. Users
+  // who want minimal can switch back to inline-chip in settings.
+  widgetTheme: "tape-deck",
   widgetPlacement: "inline",
   floatingPosition: { x: 24, y: 24 },
 };

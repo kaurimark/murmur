@@ -297,7 +297,12 @@ function createChipSkeleton(): HTMLElement {
   otherArrow.textContent = "↗";
   const otherLabel = document.createElement("span");
   otherLabel.className = "murmur-chip-other-label";
-  otherFace.append(otherArrow, otherLabel);
+  const otherStop = document.createElement("button");
+  otherStop.type = "button";
+  otherStop.className = "murmur-chip-icon-btn murmur-chip-other-stop";
+  otherStop.setAttribute("aria-label", "Stop narration");
+  setIcon(otherStop, "x");
+  otherFace.append(otherArrow, otherLabel, otherStop);
 
   chip.append(idleFace, playingFace, otherFace);
   outer.appendChild(chip);
@@ -347,6 +352,15 @@ function createChipSkeleton(): HTMLElement {
 
   close.addEventListener("mousedown", (e) => e.stopPropagation());
   close.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    actions?.stop();
+  });
+
+  // Stop button in the other-note face — lets the user halt narration of a
+  // different note without first navigating to it.
+  otherStop.addEventListener("mousedown", (e) => e.stopPropagation());
+  otherStop.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     actions?.stop();
@@ -518,7 +532,9 @@ function createDeckSkeleton(): HTMLElement {
   const otherLabel = document.createElement("span");
   otherLabel.className = "murmur-deck-other-label";
 
-  deck.append(disc, skipCluster, timeBlock, speed, close, otherLabel);
+  // otherLabel goes before close so when both are visible (other-note state),
+  // the visual order is [disc] [↗ Listening to X] [✕] — close at the right edge.
+  deck.append(disc, skipCluster, timeBlock, speed, otherLabel, close);
   outer.appendChild(deck);
 
   // --- Event wiring ---

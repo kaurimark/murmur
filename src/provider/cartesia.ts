@@ -7,8 +7,9 @@ const CARTESIA_BASE = "https://api.cartesia.ai";
 const CARTESIA_VERSION = "2024-11-13";
 
 export const CARTESIA_MODELS = [
-  { id: "sonic-2", label: "Sonic 2 (latest, highest quality)" },
-  { id: "sonic", label: "Sonic 1 (faster, cheaper)" },
+  { id: "sonic-3", label: "Sonic 3 (newest)" },
+  { id: "sonic-2", label: "Sonic 2" },
+  { id: "sonic", label: "Sonic 1 (older, faster)" },
 ] as const;
 
 export class CartesiaProvider implements TTSProvider {

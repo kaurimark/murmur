@@ -147,9 +147,16 @@ export default class MurmurPlugin extends Plugin {
   private buildWidgetState(view: EditorView | null): WidgetState | null {
     const theme = this.settings.widgetTheme;
     if (this.currentPlayerState) {
+      // Floating mode is a global controller — show full transport regardless
+      // of which note is active. Inline mode shows the "↗ Listening to X"
+      // affordance on non-playing notes.
+      const otherNoteName =
+        this.settings.widgetPlacement === "floating"
+          ? undefined
+          : this.computeOtherNoteName();
       return {
         ...this.currentPlayerState,
-        otherNoteName: this.computeOtherNoteName(),
+        otherNoteName,
         theme,
       };
     }
@@ -239,19 +246,33 @@ export default class MurmurPlugin extends Plugin {
     };
   }
 
-  private attachFloatingDrag(dom: HTMLElement): void {
-    dom.addEventListener("mousedown", (e) => {
-      // The widget's buttons / scrubber stop propagation on their own
-      // mousedowns, so this fires only for clicks on the widget body itself.
+  private attachFloatingDrag(outer: HTMLElement): void {
+    // The chip/deck already has a `mousedown → stopPropagation` listener so
+    // editor cursor placement doesn't fire when clicking the widget in inline
+    // mode. That listener kills the bubble before it reaches `outer`, so a
+    // drag handler attached to `outer` would never fire for clicks on the
+    // widget body. Attach the drag to the chip/deck directly: multiple
+    // listeners on the same element both fire — `stopPropagation` only blocks
+    // bubbling to ancestors, not sibling listeners.
+    const inner =
+      (outer.querySelector(".murmur-chip, .murmur-deck") as HTMLElement | null) ??
+      outer;
+
+    inner.addEventListener("mousedown", (e) => {
+      // Buttons + scrubber call stopPropagation on their own mousedowns, so
+      // this listener only fires when the user clicks the widget body itself.
       if (e.button !== 0) return;
       e.preventDefault();
 
-      const rect = dom.getBoundingClientRect();
+      // Use OUTER's rect for position math — `outer` is what gets moved.
+      const rect = outer.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
       const offsetY = e.clientY - rect.top;
 
       let lastX = rect.left;
       let lastY = rect.top;
+
+      document.body.classList.add("murmur-floating-dragging");
 
       const onMove = (ev: MouseEvent) => {
         const next = this.clampFloatingPosition(
@@ -264,13 +285,14 @@ export default class MurmurPlugin extends Plugin {
         );
         lastX = next.x;
         lastY = next.y;
-        dom.style.left = `${lastX}px`;
-        dom.style.top = `${lastY}px`;
+        outer.style.left = `${lastX}px`;
+        outer.style.top = `${lastY}px`;
       };
 
       const onUp = () => {
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
+        document.body.classList.remove("murmur-floating-dragging");
         this.settings.floatingPosition = { x: lastX, y: lastY };
         void this.saveSettings();
       };
