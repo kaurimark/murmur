@@ -63,6 +63,10 @@ export function markdownToSegments(markdown: string): Segment[] {
       continue;
     }
     const paraSource = markdown.slice(cursor, paraEnd);
+    if (/^[-*_]{3,}\s*$/.test(paraSource)) {
+      cursor = paraEnd;
+      continue;
+    }
     const isHeading = /^#+\s+/.test(paraSource);
     const rendered = renderForSpeech(paraSource, cursor);
     if (rendered.text) {

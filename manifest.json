@@ -1,6 +1,6 @@
 {
   "id": "murmur",
-  "name": "Murmur",
+  "name": "murmur",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
   "description": "Read your notes aloud with karaoke-style highlighting.",

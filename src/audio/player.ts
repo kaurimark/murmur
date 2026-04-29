@@ -18,6 +18,8 @@ export interface PlayerState {
   segmentIndex: number;
   totalSegments: number;
   playbackRate: number;
+  currentTimeSec: number;
+  durationSec: number;
 }
 
 export interface PlayerCallbacks {
@@ -27,15 +29,21 @@ export interface PlayerCallbacks {
     alignment: CharAlignment,
     timeSec: number,
   ) => void;
+  onTick?: (currentTimeSec: number, durationSec: number) => void;
   onComplete?: () => void;
   onStateChange?: (state: PlayerState) => void;
 }
+
+const CHARS_PER_SEC = 14;
 
 export class SegmentPlayer {
   private cache = new Map<number, CachedSegment>();
   private currentAudio: HTMLAudioElement | null = null;
   private currentUrl: string | null = null;
   private segments: Segment[] = [];
+  private segmentEstimates: number[] = [];
+  private segmentOffsets: number[] = [];
+  private totalEstimateSec = 0;
   private currentIndex = 0;
   private stopped = false;
   private playbackRate = 1;
@@ -54,12 +62,35 @@ export class SegmentPlayer {
     this.segments = segments;
     this.currentIndex = 0;
     this.consecutiveFailures = 0;
+    this.segmentEstimates = segments.map((s) =>
+      Math.max(s.text.length / CHARS_PER_SEC, 0.1),
+    );
+    this.segmentOffsets = [0];
+    for (let i = 0; i < segments.length; i++) {
+      this.segmentOffsets.push(
+        this.segmentOffsets[i] + this.segmentEstimates[i],
+      );
+    }
+    this.totalEstimateSec =
+      this.segmentOffsets[this.segmentOffsets.length - 1] ?? 0;
     if (segments.length === 0) {
       this.callbacks.onComplete?.();
       return;
     }
     this.emitState();
     await this.advance(0);
+  }
+
+  private virtualCurrentTime(): number {
+    const baseOffset = this.segmentOffsets[this.currentIndex] ?? 0;
+    if (!this.currentAudio) return baseOffset;
+    const segDur = this.currentAudio.duration;
+    const segEstimate = this.segmentEstimates[this.currentIndex] ?? 0;
+    const progress =
+      Number.isFinite(segDur) && segDur > 0
+        ? Math.max(0, Math.min(1, this.currentAudio.currentTime / segDur))
+        : 0;
+    return baseOffset + progress * segEstimate;
   }
 
   pause(): void {
@@ -84,6 +115,14 @@ export class SegmentPlayer {
     this.playbackRate = rate;
     if (this.currentAudio) this.currentAudio.playbackRate = rate;
     this.emitState();
+  }
+
+  seekFraction(fraction: number): void {
+    if (!this.currentAudio) return;
+    const dur = this.currentAudio.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    const clamped = Math.max(0, Math.min(1, fraction));
+    this.currentAudio.currentTime = clamped * dur;
   }
 
   next(): void {
@@ -179,6 +218,7 @@ export class SegmentPlayer {
         cached.alignment,
         this.currentAudio.currentTime,
       );
+      this.callbacks.onTick?.(this.virtualCurrentTime(), this.totalEstimateSec);
     });
 
     this.currentAudio.addEventListener("ended", () => {
@@ -230,6 +270,8 @@ export class SegmentPlayer {
       segmentIndex: this.currentIndex,
       totalSegments: this.segments.length,
       playbackRate: this.playbackRate,
+      currentTimeSec: this.virtualCurrentTime(),
+      durationSec: this.totalEstimateSec,
     };
   }
 
