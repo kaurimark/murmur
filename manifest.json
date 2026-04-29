@@ -1,10 +1,11 @@
 {
   "id": "murmur",
-  "name": "murmur",
+  "name": "Murmur",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Read your notes aloud with karaoke-style highlighting.",
-  "author": "@kaurimark",
+  "description": "Read your notes aloud with karaoke-style highlighting. Multiple TTS providers supported.",
+  "author": "kaurimark",
   "authorUrl": "https://github.com/kaurimark",
+  "fundingUrl": "https://buymeacoffee.com/kaurimarkkanen",
   "isDesktopOnly": true
 }

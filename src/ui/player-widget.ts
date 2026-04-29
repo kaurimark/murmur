@@ -619,46 +619,59 @@ function createDeckIconBtn(
 
 // Pixel-grid icons for the tape-deck theme. Drawn with stair-stepped rects on
 // integer coordinates, rendered with shape-rendering: crispEdges so they stay
-// chunky on retina. The X uses lucide for now since the user is undecided.
-// All icons sit on a 12x12 viewBox with content centered around (6, 6) plus
-// a small optical adjustment for the play triangle (its visual mass leans
-// left, so the geometric center is nudged right of viewBox center).
+// chunky on retina. All icons sit on a 12x12 viewBox with content centered
+// around (6, 6) plus a small optical adjustment for the play triangle (its
+// visual mass leans left, so the geometric center is nudged right of viewBox
+// center). Stored as rect coordinates rather than SVG strings so we can
+// construct the DOM with createElementNS — Obsidian's marketplace review
+// rejects innerHTML on principle.
 const DECK_PIXEL_ICONS = {
-  play:
-    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
-    '<rect x="3" y="2" width="2" height="8"/>' +
-    '<rect x="5" y="3" width="2" height="6"/>' +
-    '<rect x="7" y="4" width="2" height="4"/>' +
-    '<rect x="9" y="5" width="2" height="2"/>' +
-    "</svg>",
-  pause:
-    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
-    '<rect x="3" y="2" width="2" height="8"/>' +
-    '<rect x="8" y="2" width="2" height="8"/>' +
-    "</svg>",
-  "skip-back":
-    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
-    '<rect x="1" y="2" width="2" height="8"/>' +
-    '<rect x="4" y="5" width="2" height="2"/>' +
-    '<rect x="6" y="4" width="2" height="4"/>' +
-    '<rect x="8" y="3" width="2" height="6"/>' +
-    '<rect x="10" y="2" width="2" height="8"/>' +
-    "</svg>",
-  "skip-forward":
-    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
-    '<rect x="1" y="2" width="2" height="8"/>' +
-    '<rect x="3" y="3" width="2" height="6"/>' +
-    '<rect x="5" y="4" width="2" height="4"/>' +
-    '<rect x="7" y="5" width="2" height="2"/>' +
-    '<rect x="10" y="2" width="2" height="8"/>' +
-    "</svg>",
+  play: [
+    [3, 2, 2, 8],
+    [5, 3, 2, 6],
+    [7, 4, 2, 4],
+    [9, 5, 2, 2],
+  ],
+  pause: [
+    [3, 2, 2, 8],
+    [8, 2, 2, 8],
+  ],
+  "skip-back": [
+    [1, 2, 2, 8],
+    [4, 5, 2, 2],
+    [6, 4, 2, 4],
+    [8, 3, 2, 6],
+    [10, 2, 2, 8],
+  ],
+  "skip-forward": [
+    [1, 2, 2, 8],
+    [3, 3, 2, 6],
+    [5, 4, 2, 4],
+    [7, 5, 2, 2],
+    [10, 2, 2, 8],
+  ],
 } as const;
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 function setDeckIcon(
   el: HTMLElement,
   name: keyof typeof DECK_PIXEL_ICONS,
 ): void {
-  el.innerHTML = DECK_PIXEL_ICONS[name];
+  el.empty();
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 12 12");
+  svg.setAttribute("fill", "currentColor");
+  svg.setAttribute("shape-rendering", "crispEdges");
+  for (const [x, y, w, h] of DECK_PIXEL_ICONS[name]) {
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(w));
+    rect.setAttribute("height", String(h));
+    svg.appendChild(rect);
+  }
+  el.appendChild(svg);
 }
 
 function renderDeckState(outer: HTMLElement, state: WidgetState): void {
