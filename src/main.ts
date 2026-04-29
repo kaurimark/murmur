@@ -11,6 +11,8 @@ import {
   setMurmurHighlight,
 } from "./ui/highlighter";
 import {
+  emitWidgetTick,
+  resetWidgetTick,
   setWidgetActions,
   setWidgetState,
   widgetField,
@@ -51,8 +53,13 @@ export default class MurmurPlugin extends Plugin {
       prev: () => this.player?.prev(),
       setSpeed: (rate) => {
         this.lastPlaybackRate = rate;
-        this.player?.setSpeed(rate);
+        if (this.player) {
+          this.player.setSpeed(rate);
+        } else {
+          this.refreshWidget();
+        }
       },
+      seekFraction: (fraction) => this.player?.seekFraction(fraction),
       openPlayingNote: () => this.openPlayingNote(),
     });
 
@@ -60,7 +67,7 @@ export default class MurmurPlugin extends Plugin {
       this.app.workspace.on("active-leaf-change", () => this.refreshWidget()),
     );
 
-    this.addRibbonIcon("audio-lines", "Murmur: read note aloud", () =>
+    this.addRibbonIcon("audio-lines", "murmur: read note aloud", () =>
       this.readSmart(),
     );
 
@@ -104,20 +111,38 @@ export default class MurmurPlugin extends Plugin {
   refreshWidget(): void {
     const view = this.getActiveEditorView();
     if (!view) return;
+    const theme = this.settings.widgetTheme;
     let state: WidgetState | null;
     if (this.currentPlayerState) {
-      state = { ...this.currentPlayerState, otherNoteName: this.computeOtherNoteName() };
+      state = {
+        ...this.currentPlayerState,
+        otherNoteName: this.computeOtherNoteName(),
+        theme,
+      };
     } else if (this.settings.alwaysShowWidget) {
+      const minutes = this.computeIdleEstimateMinutes(view);
       state = {
         status: "idle",
         segmentIndex: 0,
         totalSegments: 0,
         playbackRate: this.lastPlaybackRate,
+        currentTimeSec: 0,
+        durationSec: minutes * 60,
+        idleEstimateMin: minutes,
+        theme,
       };
     } else {
       state = null;
     }
     view.dispatch({ effects: setWidgetState.of(state) });
+  }
+
+  private computeIdleEstimateMinutes(view: EditorView): number {
+    const segments = markdownToSegments(view.state.doc.toString());
+    let chars = 0;
+    for (const s of segments) chars += s.text.length;
+    const seconds = chars / 14;
+    return Math.round(seconds / 60);
   }
 
   private computeOtherNoteName(): string | undefined {
@@ -141,32 +166,45 @@ export default class MurmurPlugin extends Plugin {
     return (view.editor as unknown as { cm?: EditorView }).cm ?? null;
   }
 
+  private getPlayingEditorViews(): EditorView[] {
+    if (!this.playingNotePath) return [];
+    const views: EditorView[] = [];
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView)) continue;
+      if (view.file?.path !== this.playingNotePath) continue;
+      const cm = (view.editor as unknown as { cm?: EditorView }).cm;
+      if (cm) views.push(cm);
+    }
+    return views;
+  }
+
   private readSmart() {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) {
-      new Notice("Murmur: open a markdown note first.");
+      new Notice("murmur: open a markdown note first.");
       return;
     }
-    this.playingNotePath = view.file?.path ?? null;
     const selection = view.editor.getSelection();
     const text = selection.trim() ? selection : view.editor.getValue();
-    this.readText(text);
+    this.readText(text, view.file?.path ?? null);
   }
 
-  private readText(text: string) {
+  private readText(text: string, notePath: string | null) {
     const { apiKey, voiceId, modelId } = this.settings;
     if (!apiKey) {
-      new Notice("Murmur: enter your ElevenLabs API key in settings.");
+      new Notice("murmur: enter your ElevenLabs API key in settings.");
       return;
     }
 
     const segments = markdownToSegments(text);
     if (segments.length === 0) {
-      new Notice("Murmur: nothing to read.");
+      new Notice("murmur: nothing to read.");
       return;
     }
 
     this.stopPlayback();
+    this.playingNotePath = notePath;
     this.lastHighlight = null;
 
     const provider = new CachedTTSProvider(
@@ -174,9 +212,10 @@ export default class MurmurPlugin extends Plugin {
       this.cache,
     );
     this.player = new SegmentPlayer(provider, voiceId, modelId, {
-      onError: (msg) => new Notice(`Murmur: ${msg}`),
+      onError: (msg) => new Notice(`murmur: ${msg}`),
       onProgress: (segment, alignment, timeSec) =>
         this.updateHighlight(segment, alignment, timeSec),
+      onTick: (cur, dur) => emitWidgetTick(cur, dur),
       onComplete: () => this.handlePlaybackEnd(),
       onStateChange: (state) => this.updatePlayerState(state),
     });
@@ -194,6 +233,7 @@ export default class MurmurPlugin extends Plugin {
 
   private handlePlaybackEnd() {
     this.clearHighlight();
+    resetWidgetTick();
     this.currentPlayerState = null;
     this.player = null;
     this.playingNotePath = null;
@@ -209,6 +249,10 @@ export default class MurmurPlugin extends Plugin {
         segmentIndex: state.segmentIndex,
         totalSegments: state.totalSegments,
         playbackRate: state.playbackRate,
+        currentTimeSec: state.currentTimeSec,
+        durationSec: state.durationSec,
+        idleEstimateMin: 0,
+        theme: this.settings.widgetTheme,
       };
     }
     this.refreshWidget();
@@ -219,8 +263,6 @@ export default class MurmurPlugin extends Plugin {
     alignment: CharAlignment,
     timeSec: number,
   ) {
-    const view = this.getActiveEditorView();
-    if (!view) return;
     const range = computeWordRange(segment, alignment, timeSec);
     if (!range) return;
     if (
@@ -231,12 +273,13 @@ export default class MurmurPlugin extends Plugin {
       return;
     }
     this.lastHighlight = range;
-    view.dispatch({ effects: setMurmurHighlight.of(range) });
+    for (const view of this.getPlayingEditorViews()) {
+      view.dispatch({ effects: setMurmurHighlight.of(range) });
+    }
   }
 
   private clearHighlight() {
-    const view = this.getActiveEditorView();
-    if (view) {
+    for (const view of this.getPlayingEditorViews()) {
       view.dispatch({ effects: setMurmurHighlight.of(null) });
     }
     this.lastHighlight = null;

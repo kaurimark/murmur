@@ -1,12 +1,15 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type MurmurPlugin from "./main";
 
+export type WidgetTheme = "inline-chip" | "tape-deck";
+
 export interface MurmurSettings {
   apiKey: string;
   voiceId: string;
   modelId: string;
   cacheSizeMB: number;
   alwaysShowWidget: boolean;
+  widgetTheme: WidgetTheme;
 }
 
 export const DEFAULT_SETTINGS: MurmurSettings = {
@@ -15,6 +18,7 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   modelId: "eleven_flash_v2_5",
   cacheSizeMB: 500,
   alwaysShowWidget: false,
+  widgetTheme: "inline-chip",
 };
 
 export class MurmurSettingTab extends PluginSettingTab {
@@ -71,6 +75,23 @@ export class MurmurSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.alwaysShowWidget)
           .onChange(async (value) => {
             this.plugin.settings.alwaysShowWidget = value;
+            await this.plugin.saveSettings();
+            this.plugin.refreshWidget();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Widget theme")
+      .setDesc(
+        "Inline chip: small pill that retreats into Obsidian's chrome. Tape-deck: taller, mechanical-feel widget with a rotating disc and pixel-grid timer.",
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("inline-chip", "Inline chip (default)")
+          .addOption("tape-deck", "Tape-deck")
+          .setValue(this.plugin.settings.widgetTheme)
+          .onChange(async (value) => {
+            this.plugin.settings.widgetTheme = value as WidgetTheme;
             await this.plugin.saveSettings();
             this.plugin.refreshWidget();
           }),

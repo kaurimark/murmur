@@ -11,66 +11,551 @@
   margin: 0;
 }
 
-.murmur-widget {
+.murmur-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  max-width: 200px;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  color: var(--text-normal);
+  font-family: var(--font-interface, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.murmur-chip.is-playing {
+  padding: 0 10px 0 4px;
+  max-width: 380px;
+  background: var(--background-secondary);
+  cursor: default;
+}
+
+.murmur-chip.is-other-note {
+  max-width: 280px;
+  cursor: pointer;
+}
+
+.murmur-chip-face {
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 0;
+  width: 0;
+  pointer-events: none;
+}
+
+.murmur-chip-face-idle {
+  gap: 8px;
+  color: var(--text-muted);
+  transform: translateX(-6px);
+}
+
+.murmur-chip-face-playing {
+  gap: 10px;
+  transform: translateX(8px);
+}
+
+.murmur-chip-face-other {
   gap: 6px;
-  padding: 6px 12px;
-  margin: 0;
-  line-height: 1;
-  background-color: var(--background-secondary);
-  border-bottom: 1px solid var(--background-modifier-border);
-  font-size: var(--font-ui-small);
   color: var(--text-muted);
 }
 
-.murmur-widget-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  color: var(--text-muted);
+.murmur-chip:not(.is-playing):not(.is-other-note) .murmur-chip-face-idle {
+  opacity: 1;
+  width: auto;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.murmur-chip.is-playing .murmur-chip-face-playing {
+  opacity: 1;
+  width: auto;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.murmur-chip.is-other-note .murmur-chip-face-other {
+  opacity: 1;
+  width: auto;
+  pointer-events: auto;
+}
+
+.murmur-chip:hover:not(.is-playing) .murmur-chip-face-idle {
+  color: var(--text-normal);
+}
+
+.murmur-chip:hover:not(.is-playing) .murmur-chip-face-other {
+  color: var(--text-normal);
+}
+
+.murmur-chip-idle-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.murmur-widget-btn:hover:not(:disabled) {
-  background-color: var(--background-modifier-hover);
+.murmur-chip-idle-icon .svg-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.murmur-chip-idle-duration {
+  color: var(--text-faint);
+}
+
+.murmur-chip button {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+  outline: none;
+  font-family: inherit;
+}
+
+.murmur-chip button:focus-visible {
+  outline: 1px solid var(--text-accent);
+  outline-offset: 1px;
+}
+
+.murmur-chip-primary {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: none !important;
+  background: var(--text-normal) !important;
+  color: var(--background-primary) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  cursor: pointer;
+}
+
+.murmur-chip-primary .svg-icon {
+  width: 10px;
+  height: 10px;
+  color: var(--background-primary) !important;
+  stroke: currentColor;
+}
+
+.murmur-chip.is-loading .murmur-chip-primary {
+  background: transparent;
+  border: 1px solid var(--text-muted);
+  border-top-color: transparent;
+  width: 12px;
+  height: 12px;
+  margin: 0 6px;
+}
+
+.murmur-chip-skip-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.murmur-chip-icon-btn {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-muted);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  cursor: pointer;
+}
+
+.murmur-chip-icon-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover) !important;
   color: var(--text-normal);
 }
 
-.murmur-widget-btn:disabled {
+.murmur-chip-icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  background: transparent !important;
 }
 
-.murmur-widget-counter {
-  margin-left: 6px;
+.murmur-chip-icon-btn .svg-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.murmur-chip-close {
+  color: var(--text-faint);
+}
+
+.murmur-chip-time-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.murmur-chip-time-current,
+.murmur-chip-time-duration {
   font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.murmur-chip-time-current {
   color: var(--text-muted);
 }
 
-.murmur-widget-other-note {
-  margin-left: 6px;
-  color: var(--text-accent);
+.murmur-chip-time-duration {
+  color: var(--text-faint);
+}
+
+.murmur-chip-track {
+  flex: 1;
+  height: 2px;
+  background: var(--background-modifier-border);
+  border-radius: 999px;
+  position: relative;
   cursor: pointer;
-  text-decoration: none;
-  font-style: italic;
 }
 
-.murmur-widget-other-note:hover {
-  text-decoration: underline;
+.murmur-chip-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--text-normal);
+  border-radius: 999px;
 }
 
-.murmur-widget-speed {
-  margin-left: auto;
-  background-color: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
+.murmur-chip.is-loading .murmur-chip-track-fill {
+  width: 30%;
+  background: var(--text-accent);
+  animation: murmur-shimmer 1.2s ease-in-out infinite;
+}
+
+.murmur-chip-speed {
+  height: 22px;
+  padding: 0 6px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 11px;
   border-radius: 4px;
-  padding: 2px 6px;
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
   cursor: pointer;
+  flex-shrink: 0;
+}
+
+.murmur-chip-speed:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+
+.murmur-chip-other-arrow {
+  color: var(--text-faint);
+}
+
+.murmur-chip-other-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes murmur-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(330%);
+  }
+}
+
+@keyframes murmur-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .murmur-chip {
+    transition:
+      background 280ms ease,
+      border-color 280ms ease,
+      padding 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      max-width 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .murmur-chip-face-idle {
+    transition:
+      opacity 180ms ease,
+      transform 220ms ease;
+  }
+
+  .murmur-chip-face-playing {
+    transition:
+      opacity 220ms ease 60ms,
+      transform 280ms cubic-bezier(0.22, 1, 0.36, 1) 40ms;
+  }
+
+  .murmur-chip-track-fill {
+    transition: width 200ms linear;
+  }
+
+  .murmur-chip.is-loading .murmur-chip-primary {
+    animation: murmur-spin 0.8s linear infinite;
+  }
+}
+
+/* =============================================================================
+ * Tape-deck theme
+ * ============================================================================= */
+
+.murmur-deck {
+  display: inline-flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 14px 0 10px;
+  gap: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  box-sizing: border-box;
+  max-width: 480px;
+  width: 100%;
+  font-family: var(--font-interface, system-ui, -apple-system, sans-serif);
+}
+
+.murmur-deck-disc {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none !important;
+  background: var(--text-normal) !important;
+  color: var(--background-primary);
+  position: relative;
+  padding: 0 !important;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.murmur-deck-disc:focus-visible {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 2px;
+}
+
+.murmur-deck-disc-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateX(7.5px);
+  font-family: "Fraunces", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 11px;
+  color: var(--background-primary);
+  line-height: 1;
+  pointer-events: none;
+  letter-spacing: 0;
+}
+
+.murmur-deck-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.murmur-deck-icon-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-muted);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.murmur-deck-icon-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+
+.murmur-deck-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent !important;
+}
+
+.murmur-deck-icon-btn:focus-visible {
+  outline: 1px solid var(--text-accent);
+  outline-offset: 1px;
+}
+
+.murmur-deck-icon-btn .svg-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.murmur-deck-close {
+  color: var(--text-faint);
+}
+
+.murmur-deck-time {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.murmur-deck-time-current,
+.murmur-deck-time-duration {
+  font-family: "Departure Mono", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.murmur-deck-time-current { color: var(--text-normal); }
+.murmur-deck-time-duration { color: var(--text-faint); }
+
+.murmur-deck-track {
+  flex: 1;
+  height: 3px;
+  background: var(--background-modifier-border);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  min-width: 60px;
+}
+
+.murmur-deck-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--text-normal);
+  border-radius: 999px;
+}
+
+.murmur-deck-speed {
+  font-family: "Departure Mono", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted);
+  padding: 4px 6px !important;
+  height: 26px;
+  cursor: pointer;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+  border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none !important;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.murmur-deck-speed:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+
+.murmur-deck-speed-window {
+  display: inline-flex;
+  align-items: flex-start;
+  height: 18px;
+  overflow: hidden;
+}
+
+.murmur-deck-speed-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* transform applied via Web Animations API in JS */
+  transform: translateY(0);
+}
+
+.murmur-deck-speed-label {
+  display: block;
+  height: 18px;
+  line-height: 18px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Other-note state — replaces deck contents with a single text affordance. */
+.murmur-deck-other-label {
+  display: none;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.murmur-deck[data-state="other"] .murmur-deck-skip,
+.murmur-deck[data-state="other"] .murmur-deck-time,
+.murmur-deck[data-state="other"] .murmur-deck-speed,
+.murmur-deck[data-state="other"] .murmur-deck-close {
+  display: none;
+}
+
+.murmur-deck[data-state="other"] .murmur-deck-other-label {
+  display: block;
+}
+
+.murmur-deck[data-state="other"] {
+  cursor: pointer;
+}
+
+.murmur-deck[data-state="other"]:hover .murmur-deck-other-label {
+  color: var(--text-normal);
+}
+
+/* Disc rotation — only while playing. */
+@keyframes murmur-deck-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .murmur-deck-track-fill {
+    transition: width 200ms linear;
+  }
+
+  .murmur-deck[data-state="playing"] .murmur-deck-disc {
+    animation: murmur-deck-spin 3s linear infinite;
+  }
 }
