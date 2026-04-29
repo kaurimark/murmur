@@ -175,16 +175,50 @@ User feedback: TTS that starts within 500ms of the trigger feels mechanical. Hum
 
 ---
 
-## 11. Alternative TTS providers
+## 11. More TTS providers
 
-ElevenLabs and OpenAI are now both supported (see `src/provider/`). Other candidates worth evaluating:
+ElevenLabs, OpenAI, and Cartesia are now supported (see `src/provider/`). The TTS landscape has shifted as of April 2026 — ElevenLabs is no longer the undisputed quality leader. Updated picture:
 
-- **Cartesia Sonic** — closest to ElevenLabs in quality, native word timestamps via streaming endpoint. Strongest premium substitute. Should be next.
-- **Microsoft Azure Neural TTS** — most mature word-boundary support, generous free tier, very reliable but less expressive.
-- **Play.HT, LMNT, Deepgram Aura** — second-tier options.
-- **Web Speech API / macOS `say`** — local-only, free, no network. Privacy story for backlog #1 (agent narration of sensitive content).
+**Worth integrating next:**
+- **Fish Audio S2 Pro** — currently top of EmergentTTS-Eval blind tests. ~$15/1M chars, ~10× cheaper than ElevenLabs at top tier. Most compelling quality/cost ratio. Same adapter pattern as OpenAI; ~30 min of work.
+- **Inworld TTS-1.5 MAX** — #1 on Artificial Analysis Speech Arena (ELO ~1236 vs ElevenLabs v3 at 1179). Verify pricing transparency before committing.
+- **Cartesia Sonic 3** — already integrated with sonic-2; bumping to sonic-3 if it's GA is a one-line model-list update.
 
-The `TTSProvider` interface + multi-provider settings shape is already in place — adding a new provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
+**Worth skipping:**
+- PlayHT (we don't need voice library variety for note narration).
+- Speechmatics (cheap at $11/1M but quality reviews are lukewarm).
+- Big-cloud TTS (Google, Azure, AWS Polly) — reliable but nobody picks them on quality.
+
+**Local-only fallback** — see #15 below.
+
+The `TTSProvider` interface + multi-provider settings shape is already in place — adding a cloud provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
+
+---
+
+## 15. Kokoro local TTS as the free default tier
+
+**Idea.** Bundle Kokoro-82M (Apache-licensed, ~82M params, ~4.5 MOS, runs on a MacBook Air via ONNX/WASM) as the plugin's free local tier. Default for new users. No API key, no network, zero cost per character.
+
+**Why it matters strategically.** "I want to hear my notes aloud" is a request that should not require setting up an API key and a payment method. Every cloud-only TTS plugin loses users at the API-key step. A free local default removes that entire friction class — the plugin becomes useful in 30 seconds instead of 10 minutes.
+
+It's also the privacy story: agent narration (#1) of potentially-sensitive note content shouldn't pass through OpenAI/ElevenLabs servers. Local TTS solves that by construction.
+
+**What it costs us.**
+- Bundle size: Kokoro ONNX is ~80MB quantized, ~300MB full. Probably download-on-first-use rather than ship in the .zip. Use `app.vault.adapter` to cache.
+- Engineering: ONNX Runtime Web in a CodeMirror plugin. WASM init, model loading, inference. ~2-3 days to get working.
+- Performance: 82M params is small for a transformer but inference on a MacBook Air at acceptable latency requires care. Probably ~2-5x realtime — fine for whole-file narration, marginal for streaming.
+- Quality: ~90% of cloud quality for prose narration. No voice cloning, limited voice packs (a handful of presets), flat emotional range. None of those matter for note narration.
+
+**Phasing.**
+1. Ship cloud-only v1 (current state).
+2. Add Kokoro as an opt-in provider. Validate the inference path, model download UX, performance on real machines.
+3. Once stable, make Kokoro the default for new installs. Existing cloud users stay on their current provider.
+
+**References.**
+- [Kokoro on GitHub](https://github.com/hexgrad/kokoro)
+- [Kokoro TTS Review 2026 — ReviewNexa](https://reviewnexa.com/kokoro-tts-review/)
+
+**Prereqs.** Stable v1 across cloud providers. ONNX Runtime Web evaluation pass to confirm it actually loads inside an Obsidian plugin's environment without breaking electron sandbox rules.
 
 ---
 
@@ -197,26 +231,6 @@ User feedback: the karaoke highlight works but UI deserves polish — outline de
 - Optional underline-only style for users who find background highlights distracting
 
 **Why backlog.** v1 highlight is functional. Polish iteration deserves real listening sessions to tune.
-
----
-
-## 13. Floating / pop-out widget mode
-
-**Problem.** When listening to a long note, the inline widget at the top scrolls out of view. Pausing, scrubbing, or changing speed requires scrolling back to the top — annoying mid-listen.
-
-**Idea.** Add a setting that switches the widget from inline (current behavior) to a floating pane that stays visible regardless of scroll position. Default position: bottom-right of the Obsidian window. Drag to reposition; persist position to plugin data.
-
-**Open questions.**
-- Does it follow scroll within a single pane, or anchor to the Obsidian window? (Probably window — that's the point.)
-- Per-vault or global persisted position?
-- What happens with multiple Obsidian windows / split panes? One floating widget per window, or one global?
-- Snap-to-corner behavior, or pixel-precise drag?
-- When alwaysShow is false and not playing, does the floating widget hide entirely, or show the idle pill in its floating spot?
-- Interaction with the tape-deck redesign — same controls, just in a draggable container.
-
-**Mechanism.** Implementation candidates: Obsidian's `Modal` is wrong (modal blocks). A custom DOM element appended to `document.body` with `position: fixed` and `pointer-events: auto` would work; needs `ItemView` or a plain div. Drag via `mousedown`/`mousemove`/`mouseup` with bounds clamping.
-
-**Prereqs.** Stable v1 inline widget. Worth building after the tape-deck redesign so the floating version inherits the final visual.
 
 ---
 

@@ -152,6 +152,42 @@ function renderForTheme(outer: HTMLElement, state: WidgetState): void {
   }
 }
 
+// =============================================================================
+// Floating-widget API — used by the plugin to render the same chip/deck DOM
+// outside the CodeMirror editor (in a fixed-position container).
+// =============================================================================
+
+export function createFloatingWidget(state: WidgetState): HTMLElement {
+  const dom =
+    state.theme === "tape-deck" ? createDeckSkeleton() : createChipSkeleton();
+  dom.classList.add("murmur-floating");
+  renderForTheme(dom, state);
+  attachTickListener(dom);
+  applyTickToDom(dom, lastTick.currentTimeSec, lastTick.durationSec);
+  return dom;
+}
+
+/**
+ * Update an existing floating widget. Returns false if the theme changed and
+ * the DOM needs to be rebuilt (caller should destroy + create).
+ */
+export function updateFloatingWidget(
+  dom: HTMLElement,
+  state: WidgetState,
+): boolean {
+  const expectsDeck = state.theme === "tape-deck";
+  const hasDeck = !!dom.querySelector(".murmur-deck");
+  if (expectsDeck !== hasDeck) return false;
+  renderForTheme(dom, state);
+  applyTickToDom(dom, lastTick.currentTimeSec, lastTick.durationSec);
+  return true;
+}
+
+export function destroyFloatingWidget(dom: HTMLElement): void {
+  detachTickListener(dom);
+  dom.remove();
+}
+
 function attachTickListener(dom: HTMLElement): void {
   const fn: TickListener = (cur, dur) => applyTickToDom(dom, cur, dur);
   tickListenersByDom.set(dom, fn);

@@ -1,3 +1,25 @@
+/* =============================================================================
+ * Floating-mode overrides — class added to the .murmur-widget-outer wrapper
+ * when the widget is mounted to document.body instead of the editor.
+ * ============================================================================= */
+
+.murmur-floating {
+  position: fixed !important;
+  z-index: 1000;
+  /* Inline mode adds padding-bottom for spacing from the H1; floating mode
+   * doesn't need that. */
+  padding-bottom: 0 !important;
+  user-select: none;
+}
+
+.murmur-floating .murmur-chip,
+.murmur-floating .murmur-deck {
+  /* Lift the actual widget body off the page so it reads as floating. */
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 .murmur-active {
   background-color: rgba(255, 213, 0, 0.45);
   border-radius: 4px;

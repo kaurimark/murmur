@@ -5,6 +5,8 @@ import { CARTESIA_MODELS } from "./provider/cartesia";
 
 export type WidgetTheme = "inline-chip" | "tape-deck";
 
+export type WidgetPlacement = "inline" | "floating";
+
 export type ProviderId = "elevenlabs" | "openai" | "cartesia";
 
 export interface ProviderConfig {
@@ -17,6 +19,11 @@ export type ElevenLabsConfig = ProviderConfig;
 export type OpenAIConfig = ProviderConfig;
 export type CartesiaConfig = ProviderConfig;
 
+export interface FloatingPosition {
+  x: number;
+  y: number;
+}
+
 export interface MurmurSettings {
   provider: ProviderId;
   elevenlabs: ElevenLabsConfig;
@@ -25,6 +32,8 @@ export interface MurmurSettings {
   cacheSizeMB: number;
   alwaysShowWidget: boolean;
   widgetTheme: WidgetTheme;
+  widgetPlacement: WidgetPlacement;
+  floatingPosition: FloatingPosition;
 }
 
 export const DEFAULT_SETTINGS: MurmurSettings = {
@@ -47,6 +56,8 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   cacheSizeMB: 500,
   alwaysShowWidget: false,
   widgetTheme: "inline-chip",
+  widgetPlacement: "inline",
+  floatingPosition: { x: 24, y: 24 },
 };
 
 /**
@@ -163,6 +174,23 @@ export class MurmurSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.widgetTheme)
           .onChange(async (value) => {
             this.plugin.settings.widgetTheme = value as WidgetTheme;
+            await this.plugin.saveSettings();
+            this.plugin.refreshWidget();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Widget placement")
+      .setDesc(
+        "Inline: at the top of each note (scrolls with the page). Floating: a draggable pane that stays visible everywhere — useful for long notes where the inline widget would scroll out of view.",
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("inline", "Inline (at the top of the note)")
+          .addOption("floating", "Floating (draggable, always visible)")
+          .setValue(this.plugin.settings.widgetPlacement)
+          .onChange(async (value) => {
+            this.plugin.settings.widgetPlacement = value as WidgetPlacement;
             await this.plugin.saveSettings();
             this.plugin.refreshWidget();
           }),

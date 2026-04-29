@@ -14,10 +14,13 @@ import {
   setMurmurHighlight,
 } from "./ui/highlighter";
 import {
+  createFloatingWidget,
+  destroyFloatingWidget,
   emitWidgetTick,
   resetWidgetTick,
   setWidgetActions,
   setWidgetState,
+  updateFloatingWidget,
   widgetField,
   WidgetState,
 } from "./ui/player-widget";
@@ -38,6 +41,7 @@ export default class MurmurPlugin extends Plugin {
   private playingNotePath: string | null = null;
   private lastPlaybackRate = 1;
   private lastHighlight: { from: number; to: number } | null = null;
+  private floatingWidget: HTMLElement | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -106,6 +110,7 @@ export default class MurmurPlugin extends Plugin {
 
   async onunload() {
     setWidgetActions(null);
+    this.unmountFloating();
     this.stopPlayback();
   }
 
@@ -123,18 +128,34 @@ export default class MurmurPlugin extends Plugin {
 
   refreshWidget(): void {
     const view = this.getActiveEditorView();
-    if (!view) return;
+    const state = this.buildWidgetState(view);
+
+    if (this.settings.widgetPlacement === "floating") {
+      // Suppress the inline widget when in floating mode.
+      if (view) {
+        view.dispatch({ effects: setWidgetState.of(null) });
+      }
+      this.refreshFloating(state);
+    } else {
+      this.unmountFloating();
+      if (view) {
+        view.dispatch({ effects: setWidgetState.of(state) });
+      }
+    }
+  }
+
+  private buildWidgetState(view: EditorView | null): WidgetState | null {
     const theme = this.settings.widgetTheme;
-    let state: WidgetState | null;
     if (this.currentPlayerState) {
-      state = {
+      return {
         ...this.currentPlayerState,
         otherNoteName: this.computeOtherNoteName(),
         theme,
       };
-    } else if (this.settings.alwaysShowWidget) {
+    }
+    if (this.settings.alwaysShowWidget && view) {
       const minutes = this.computeIdleEstimateMinutes(view);
-      state = {
+      return {
         status: "idle",
         segmentIndex: 0,
         totalSegments: 0,
@@ -144,10 +165,8 @@ export default class MurmurPlugin extends Plugin {
         idleEstimateMin: minutes,
         theme,
       };
-    } else {
-      state = null;
     }
-    view.dispatch({ effects: setWidgetState.of(state) });
+    return null;
   }
 
   private computeIdleEstimateMinutes(view: EditorView): number {
@@ -156,6 +175,109 @@ export default class MurmurPlugin extends Plugin {
     for (const s of segments) chars += s.text.length;
     const seconds = chars / 14;
     return Math.round(seconds / 60);
+  }
+
+  // --- Floating widget ---
+
+  private refreshFloating(state: WidgetState | null): void {
+    if (!state) {
+      this.unmountFloating();
+      return;
+    }
+    if (!this.floatingWidget) {
+      this.mountFloating(state);
+      return;
+    }
+    const ok = updateFloatingWidget(this.floatingWidget, state);
+    if (!ok) {
+      // Theme changed — rebuild the DOM.
+      this.unmountFloating();
+      this.mountFloating(state);
+    }
+  }
+
+  private mountFloating(state: WidgetState): void {
+    const dom = createFloatingWidget(state);
+    dom.style.position = "fixed";
+    dom.style.zIndex = "1000";
+    dom.style.left = "0px";
+    dom.style.top = "0px";
+    document.body.appendChild(dom);
+
+    // Measure after mount so we can clamp the saved position to the current
+    // viewport (handles the case where the user undocks a laptop and the
+    // window shrinks below the saved coordinates).
+    const rect = dom.getBoundingClientRect();
+    const { x, y } = this.clampFloatingPosition(
+      this.settings.floatingPosition,
+      rect.width,
+      rect.height,
+    );
+    dom.style.left = `${x}px`;
+    dom.style.top = `${y}px`;
+
+    this.attachFloatingDrag(dom);
+    this.floatingWidget = dom;
+  }
+
+  private unmountFloating(): void {
+    if (!this.floatingWidget) return;
+    destroyFloatingWidget(this.floatingWidget);
+    this.floatingWidget = null;
+  }
+
+  private clampFloatingPosition(
+    pos: { x: number; y: number },
+    width: number,
+    height: number,
+  ): { x: number; y: number } {
+    const maxX = Math.max(0, window.innerWidth - width);
+    const maxY = Math.max(0, window.innerHeight - height);
+    return {
+      x: Math.max(0, Math.min(maxX, pos.x)),
+      y: Math.max(0, Math.min(maxY, pos.y)),
+    };
+  }
+
+  private attachFloatingDrag(dom: HTMLElement): void {
+    dom.addEventListener("mousedown", (e) => {
+      // The widget's buttons / scrubber stop propagation on their own
+      // mousedowns, so this fires only for clicks on the widget body itself.
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      const rect = dom.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const offsetY = e.clientY - rect.top;
+
+      let lastX = rect.left;
+      let lastY = rect.top;
+
+      const onMove = (ev: MouseEvent) => {
+        const next = this.clampFloatingPosition(
+          {
+            x: ev.clientX - offsetX,
+            y: ev.clientY - offsetY,
+          },
+          rect.width,
+          rect.height,
+        );
+        lastX = next.x;
+        lastY = next.y;
+        dom.style.left = `${lastX}px`;
+        dom.style.top = `${lastY}px`;
+      };
+
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        this.settings.floatingPosition = { x: lastX, y: lastY };
+        void this.saveSettings();
+      };
+
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
   }
 
   private computeOtherNoteName(): string | undefined {
