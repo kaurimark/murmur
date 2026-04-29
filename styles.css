@@ -341,7 +341,9 @@
   border: none !important;
   background: var(--text-normal) !important;
   color: var(--background-primary) !important;
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 !important;
   cursor: pointer;
   appearance: none;
