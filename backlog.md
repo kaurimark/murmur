@@ -4,20 +4,67 @@ Out-of-scope-for-v1 ideas worth keeping. Not committed work — pulled in only w
 
 ---
 
-## 1. Agent-triggered TTS via Obsidian URI
+## 1. Agent-triggered TTS — ambient narration from long-running agents
 
-**Idea.** Register an `obsidian://murmur/speak?text=...` URI handler so an LLM agent (running via Obsidian CLI, Agent Client, or just shelling out to `open`) can speak text to the user. Effectively, the agent gets a voice.
+**The vision.** The agent gets a voice. Not for reading whole responses aloud — for occasional, terse status updates while you're doing something else. You're reading on your Kindle. A Claude Code session has been working on a refactor for eight minutes. It finishes, and a calm voice from your laptop says: *"Auth refactor done. Two tests fail; rerunning."* That's it. You decide whether to look. The agent doesn't ask permission to speak, and doesn't ramble — it just tells you what a colleague poking their head in would tell you.
 
-**Why it's interesting.** Pairs naturally with how the user already works (Obsidian + LLMs). Turns the plugin from a passive read-aloud tool into an output channel for agents. Differentiator on the marketplace.
+Multiply: three or four agents running in parallel, each occasionally checking in. You stay in flow on the Kindle. The agents stay productive in the editor.
 
-**Mechanism (verified).** Obsidian CLI as of Feb 2026 focuses on note CRUD; it does not expose generic plugin-command invocation. The clean path is the URI handler, which Obsidian has supported for years. The agent shells out: `open "obsidian://murmur/speak?text=Hello"` on macOS (or `xdg-open` / `start`).
+This is the long-term north star for Murmur. It reframes the plugin from "read my notes aloud" to "a voice channel for the things working on your behalf." Read-aloud is one customer; agents are another. The same TTS infrastructure serves both.
 
-**Open questions.**
-- Queueing: if the agent fires three speak-aloud calls in a row, do we interleave, queue, or interrupt?
-- Should agent-triggered speech use a distinct voice from user-initiated reads, so the user can audibly tell them apart?
-- URI text length cap? Long texts may need a paste-via-clipboard fallback.
+**Why it's distinct.** No mainstream TTS plugin treats the agent as a first-class caller. The closest analogues are Mac OS `say` (no integration into anything), or one-off Slack notifications (visual, interrupting). A scoped, voice-only side-channel keyed to the user's existing Obsidian setup is a real gap.
 
-**Prereqs.** Stable v1 of the core read-aloud flow.
+---
+
+### Two things this needs
+
+**(a) The mechanism — easy.** Register an `obsidian://murmur/speak?text=...` URI handler in `onload()` via `registerObsidianProtocolHandler`. Any agent that can shell out (`open`, `xdg-open`, `start`) can trigger speech. No special CLI integration required. Optional query params:
+- `voice=alloy` — pick which voice speaks. Defaults to a separate "agent voice" setting so the user can audibly tell agents from their own reads.
+- `agent=auth-refactor` — tag for the source. Lets the user route different agents to different voices via settings, or filter (e.g. mute one).
+- `priority=low|normal|high` — see queueing below.
+
+This part is small — maybe a day of work once v1 is stable. The plugin's existing player + cache + provider stack already do the heavy lifting.
+
+**(b) The speakability discipline — the actually-hard part.** Agents are verbose by default. A raw "I have completed the refactor of the authentication service. The changes involve modifying three files: ..." spoken aloud is exactly the kind of babble the user is trying to escape. The vision only works if what gets spoken is *terse, factual, and earned* — like a one-sentence Slack message from a competent colleague.
+
+Two approaches, ordered by ambition:
+
+1. **Convention.** Murmur ships a recommended slash-command / agent prompt fragment that documents the voice contract: *"When invoking murmur, send at most one sentence. Prefer noun phrases. State result, not process. No filler."* The agent engineers the spoken output themselves; Murmur just speaks what it gets. Easy to ship, depends on user discipline.
+
+2. **Synthesis layer.** Murmur exposes a second URI: `obsidian://murmur/announce?text=...` where the input is the *full* agent response and Murmur runs it through a small LLM call to produce a one-sentence speakable form before TTS-ing it. Costs more (an extra inference) but removes the discipline burden from the caller. Optional model choice; defaults to something cheap (Claude Haiku, GPT-4o-mini).
+
+Approach 1 ships first. Approach 2 is a power-user add-on for users who don't want to think about it.
+
+---
+
+### Concerns to settle before building
+
+**Queueing.** If three agents speak-aloud within five seconds, what happens?
+- Default: FIFO queue, no interrupts. Each utterance plays in full.
+- Priority param can bump to front (rare; "build broke" kind of urgency).
+- Hard cap on queue depth — if more than ~5 utterances queue up, drop the oldest non-priority ones. Agents might run wild; user shouldn't get drowned.
+
+**Per-agent voice routing.** Settings table mapping `agent=` tag → voice ID. So the user trains their ear: "alloy is the auth task, nova is the docs task." Without this, several concurrent agents sound identical and lose the channel-distinction value.
+
+**On/off switch.** A single global mute, ribbon-accessible. Nobody wants their laptop suddenly speaking during a meeting. Probably also a "quiet hours" schedule — speech respects it, queues silently.
+
+**Notification fallback.** If TTS fails (no network, no API key), drop to an Obsidian Notice. The agent shouldn't be silently dropped on the floor.
+
+**Length cap.** Reject `text=` longer than ~500 chars at the URI layer with an explanatory Notice — encourages discipline, prevents the "agent dumps full response into TTS" failure mode.
+
+**Privacy.** Agent text passes through whatever TTS provider the user has configured. ElevenLabs / OpenAI both keep submitted text per their data policies. Document this clearly. Local-only providers (e.g. macOS `say`, Web Speech API) become more attractive for sensitive workflows — see backlog #11.
+
+**Caching collision.** Cache-by-text means two agents speaking the same sentence get one billing event. Good. But the cache key must include the voice, which it already does after the multi-provider work.
+
+---
+
+### Phasing
+
+- **v1.x (after read-aloud stable).** URI handler. Single voice. FIFO queue. Global mute. Documented prompt-fragment for "speakable" output. This is the MVP — enough to validate the workflow.
+- **v1.y.** Per-agent voice routing. Quiet hours.
+- **v2.** Synthesis layer (the LLM-condensation announce endpoint). Probably also a small companion CLI (`murmur-say "..."`) so agents don't need to construct URIs themselves.
+
+**Prereqs.** Stable v1 of the core read-aloud flow. Multi-provider support (done — agents will want a cheap provider so they can be chatty without bankrupting the user).
 
 ---
 
