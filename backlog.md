@@ -64,7 +64,7 @@ Approach 1 ships first. Approach 2 is a power-user add-on for users who don't wa
 - **v1.y.** Per-agent voice routing. Quiet hours.
 - **v2.** Synthesis layer (the LLM-condensation announce endpoint). Probably also a small companion CLI (`murmur-say "..."`) so agents don't need to construct URIs themselves.
 
-**Prereqs.** Stable v1 of the core read-aloud flow. Multi-provider support (done — agents will want a cheap provider so they can be chatty without bankrupting the user).
+**Prereqs.** Stable v1 of the core read-aloud flow. Multi-provider support is done (four cloud providers shipped — agents have a cheap option so they can be chatty without bankrupting the user). The remaining gating item is just "is v1 stable enough to layer this on top."
 
 ---
 
@@ -123,16 +123,6 @@ Approach 1 ships first. Approach 2 is a power-user add-on for users who don't wa
 
 ---
 
-## 5. Voice previews in plugin settings
-
-**Idea.** A "Test voice" button next to the voice ID field that plays a 5-second sample with the configured voice + model. Removes the friction of: save settings → open a note → run command → listen → realize voice is wrong → repeat.
-
-**Why now.** Picking voices from ElevenLabs' library is the highest-friction part of the current setup loop — the user hit this on first use. A button removes a 30-second round trip to a 1-second one.
-
-**Implementation.** Settings tab gets a button that calls the existing provider with a hardcoded sample sentence. Reuse `SegmentPlayer` or a stripped-down one-shot player. ~30 LOC.
-
----
-
 ## 6. Bold/italic affect speech delivery
 
 **Problem.** ElevenLabs strips/ignores `*`/`**`/`_` markdown by default. The model has no way to know the user emphasized "really" in "I really meant it."
@@ -177,12 +167,10 @@ User feedback: TTS that starts within 500ms of the trigger feels mechanical. Hum
 
 ## 11. More TTS providers
 
-ElevenLabs, OpenAI, and Cartesia are now supported (see `src/provider/`). The TTS landscape has shifted as of April 2026 — ElevenLabs is no longer the undisputed quality leader. Updated picture:
+Four cloud providers are now supported: ElevenLabs, Fish Audio (S2 Pro / S1), Cartesia (Sonic 3 / 2 / 1), OpenAI (tts-1 / tts-1-hd). The `TTSProvider` interface + multi-provider settings shape held up across all four — adding another cloud provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
 
 **Worth integrating next:**
-- **Fish Audio S2 Pro** — currently top of EmergentTTS-Eval blind tests. ~$15/1M chars, ~10× cheaper than ElevenLabs at top tier. Most compelling quality/cost ratio. Same adapter pattern as OpenAI; ~30 min of work.
-- **Inworld TTS-1.5 MAX** — #1 on Artificial Analysis Speech Arena (ELO ~1236 vs ElevenLabs v3 at 1179). Verify pricing transparency before committing.
-- **Cartesia Sonic 3** — already integrated with sonic-2; bumping to sonic-3 if it's GA is a one-line model-list update.
+- **Inworld TTS-1.5 MAX** — #1 on Artificial Analysis Speech Arena (ELO ~1236 vs ElevenLabs v3 at 1179) per April 2026 benchmarks. Verify pricing transparency before committing — Inworld's pricing has historically been opaque.
 
 **Worth skipping:**
 - PlayHT (we don't need voice library variety for note narration).
@@ -190,8 +178,6 @@ ElevenLabs, OpenAI, and Cartesia are now supported (see `src/provider/`). The TT
 - Big-cloud TTS (Google, Azure, AWS Polly) — reliable but nobody picks them on quality.
 
 **Local-only fallback** — see #15 below.
-
-The `TTSProvider` interface + multi-provider settings shape is already in place — adding a cloud provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
 
 ---
 
@@ -234,24 +220,11 @@ User feedback: the karaoke highlight works but UI deserves polish — outline de
 
 ---
 
-## 14. Widget theme switcher
+## 16. Floating widget refinements
 
-**Idea.** A setting that picks the visual style of the player widget. Two themes to start:
+The floating widget mode shipped, but a few polish details were noted as open questions and deferred:
 
-- **Inline chip** (current). Compact pill, idle ↔ playing morph, conventional play/pause icon. The current implementation in `src/ui/player-widget.ts` and the chip CSS — preserved as-is.
-- **Tape-deck** (new). Per [design-decisions.md](design-decisions.md). Larger footprint, pixel-grid timer (Departure Mono), rotating disc with `m` mark, single-block speed wheel, retro-mechanical character.
-
-**Why both.** The inline chip is small and unobtrusive — appropriate for users who want a TTS plugin to fade into Obsidian's chrome. The tape-deck is bold and characterful — appropriate for users who want the player to be a *thing*. Forcing one philosophy is a choice we don't have to make.
-
-The only competing TTS plugin (Microsoft Edge TTS, reportedly buggy) doesn't address this dimension at all. Shipping two visual modes is a real differentiator without doubling the surface area meaningfully — most code (player, segmenter, cache, settings) is shared.
-
-**Sizing note.** The inline chip is fine at its current ~32px height. The tape-deck theme should be ~50–100% taller to give the disc and timer room. Actual pixel values to be set during tape-deck implementation, but the size difference between themes is intentional — small-and-quiet vs. tall-and-mechanical.
-
-**Implementation sketch.**
-- `MurmurSettings.widgetTheme: "inline-chip" | "tape-deck"` with default `"inline-chip"` (so existing users don't get a surprise visual change on update).
-- Settings tab: dropdown to pick.
-- `player-widget.ts` becomes a dispatcher that picks one of two `WidgetType` implementations based on the current setting. Or two separate WidgetType classes registered conditionally.
-- Each theme has its own CSS namespace (`.murmur-chip-*` for inline, e.g. `.murmur-deck-*` for tape-deck) — no shared rules, no leak between themes.
-- Switching themes at runtime should update visible widgets without a reload — straightforward via `refreshWidget()`.
-
-**Prereqs.** Tape-deck implementation. Until then, this is one theme with no switcher.
+- **Per-vault floating position.** Currently the saved x/y is global across all vaults. If a user has different screen layouts per vault, position resets to the wrong place. One-line storage change to namespace by `app.vault.getName()`.
+- **Edge-snap behavior.** Drag is currently pixel-precise. Snap-to-corner / snap-to-edge would feel more intentional. Threshold-based: if drag-end is within ~24px of a viewport edge, snap to it.
+- **Drag handle area.** Currently the entire widget body is draggable (minus buttons/scrubber). If users find that they're starting drags on accidental clicks, add a small dedicated drag-handle strip (e.g. 8–12px on the left edge).
+- **Multi-window support — explicitly out of scope.** Decision recorded: one floating widget per Obsidian process, attached to the main window. If users ask for it later, it'd be per-window mounts driven by `app.workspace.on("window-open")`.
