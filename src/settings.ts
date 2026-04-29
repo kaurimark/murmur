@@ -2,12 +2,13 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type MurmurPlugin from "./main";
 import { OPENAI_MODELS, OPENAI_VOICES } from "./provider/openai";
 import { CARTESIA_MODELS } from "./provider/cartesia";
+import { FISHAUDIO_MODELS } from "./provider/fishaudio";
 
 export type WidgetTheme = "inline-chip" | "tape-deck";
 
 export type WidgetPlacement = "inline" | "floating";
 
-export type ProviderId = "elevenlabs" | "openai" | "cartesia";
+export type ProviderId = "elevenlabs" | "openai" | "cartesia" | "fishaudio";
 
 export interface ProviderConfig {
   apiKey: string;
@@ -18,6 +19,7 @@ export interface ProviderConfig {
 export type ElevenLabsConfig = ProviderConfig;
 export type OpenAIConfig = ProviderConfig;
 export type CartesiaConfig = ProviderConfig;
+export type FishAudioConfig = ProviderConfig;
 
 export interface FloatingPosition {
   x: number;
@@ -29,6 +31,7 @@ export interface MurmurSettings {
   elevenlabs: ElevenLabsConfig;
   openai: OpenAIConfig;
   cartesia: CartesiaConfig;
+  fishaudio: FishAudioConfig;
   cacheSizeMB: number;
   alwaysShowWidget: boolean;
   widgetTheme: WidgetTheme;
@@ -52,6 +55,11 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
     apiKey: "",
     voiceId: "",
     modelId: "sonic-3",
+  },
+  fishaudio: {
+    apiKey: "",
+    voiceId: "",
+    modelId: "s1",
   },
   cacheSizeMB: 500,
   alwaysShowWidget: false,
@@ -113,6 +121,10 @@ export function mergeWithDefaults(
       ...DEFAULT_SETTINGS.cartesia,
       ...(partial.cartesia ?? {}),
     },
+    fishaudio: {
+      ...DEFAULT_SETTINGS.fishaudio,
+      ...(partial.fishaudio ?? {}),
+    },
   };
 }
 
@@ -128,11 +140,12 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("TTS provider")
       .setDesc(
-        "ElevenLabs gives precise word-level karaoke highlighting but costs more. Cartesia is similar quality and often cheaper. OpenAI is the cheapest. Karaoke is approximated from audio duration on Cartesia and OpenAI.",
+        "ElevenLabs gives precise word-level karaoke highlighting but costs more. Fish Audio currently leads quality leaderboards at ~10× lower cost. Cartesia is similar quality and often cheaper. OpenAI is the cheapest. Karaoke is approximated from audio duration on Fish Audio, Cartesia, and OpenAI.",
       )
       .addDropdown((dropdown) =>
         dropdown
           .addOption("elevenlabs", "ElevenLabs")
+          .addOption("fishaudio", "Fish Audio")
           .addOption("cartesia", "Cartesia")
           .addOption("openai", "OpenAI")
           .setValue(this.plugin.settings.provider)
@@ -147,6 +160,8 @@ export class MurmurSettingTab extends PluginSettingTab {
       this.renderElevenLabs();
     } else if (this.plugin.settings.provider === "cartesia") {
       this.renderCartesia();
+    } else if (this.plugin.settings.provider === "fishaudio") {
+      this.renderFishAudio();
     } else {
       this.renderOpenAI();
     }
@@ -350,6 +365,50 @@ export class MurmurSettingTab extends PluginSettingTab {
       .setName("Model")
       .addDropdown((dropdown) => {
         for (const m of CARTESIA_MODELS) {
+          dropdown.addOption(m.id, m.label);
+        }
+        dropdown.setValue(cfg.modelId).onChange(async (value) => {
+          cfg.modelId = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    this.renderPreviewButton();
+  }
+
+  private renderFishAudio(): void {
+    const { containerEl } = this;
+    const cfg = this.plugin.settings.fishaudio;
+
+    new Setting(containerEl)
+      .setName("Fish Audio API key")
+      .setDesc("Stored as plain text in your vault. Get one at fish.audio.")
+      .addText((text) =>
+        text
+          .setPlaceholder("...")
+          .setValue(cfg.apiKey)
+          .onChange(async (value) => {
+            cfg.apiKey = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Voice (reference) ID")
+      .setDesc(
+        "Fish Audio voice/reference ID. Browse the voice library at fish.audio and copy the ID.",
+      )
+      .addText((text) =>
+        text.setValue(cfg.voiceId).onChange(async (value) => {
+          cfg.voiceId = value.trim();
+          await this.plugin.saveSettings();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Model")
+      .addDropdown((dropdown) => {
+        for (const m of FISHAUDIO_MODELS) {
           dropdown.addOption(m.id, m.label);
         }
         dropdown.setValue(cfg.modelId).onChange(async (value) => {

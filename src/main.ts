@@ -3,6 +3,7 @@ import type { EditorView } from "@codemirror/view";
 import { ElevenLabsProvider } from "./provider/elevenlabs";
 import { OpenAIProvider } from "./provider/openai";
 import { CartesiaProvider } from "./provider/cartesia";
+import { FishAudioProvider } from "./provider/fishaudio";
 import { AudioCache, CachedTTSProvider } from "./provider/cache";
 import type { TTSProvider } from "./provider/types";
 import { markdownToSegments } from "./segmenter";
@@ -353,6 +354,8 @@ export default class MurmurPlugin extends Plugin {
         return this.settings.openai;
       case "cartesia":
         return this.settings.cartesia;
+      case "fishaudio":
+        return this.settings.fishaudio;
       default:
         return this.settings.elevenlabs;
     }
@@ -364,6 +367,8 @@ export default class MurmurPlugin extends Plugin {
         return "OpenAI";
       case "cartesia":
         return "Cartesia";
+      case "fishaudio":
+        return "Fish Audio";
       default:
         return "ElevenLabs";
     }
@@ -377,6 +382,8 @@ export default class MurmurPlugin extends Plugin {
         return new OpenAIProvider(cfg.apiKey);
       case "cartesia":
         return new CartesiaProvider(cfg.apiKey);
+      case "fishaudio":
+        return new FishAudioProvider(cfg.apiKey);
       default:
         return new ElevenLabsProvider(cfg.apiKey);
     }
