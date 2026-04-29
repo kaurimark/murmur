@@ -53,7 +53,7 @@ export class AudioCache {
 
   async get(
     hash: string,
-  ): Promise<{ audio: ArrayBuffer; alignment: CharAlignment } | null> {
+  ): Promise<{ audio: ArrayBuffer; alignment?: CharAlignment } | null> {
     const entry = this.index.entries[hash];
     if (!entry) return null;
 
@@ -61,7 +61,7 @@ export class AudioCache {
     const audioPath = normalizePath(`${this.cacheDir}/${hash}.mp3`);
     const alignPath = normalizePath(`${this.cacheDir}/${hash}.json`);
 
-    if (!(await adapter.exists(audioPath)) || !(await adapter.exists(alignPath))) {
+    if (!(await adapter.exists(audioPath))) {
       delete this.index.entries[hash];
       this.index.totalBytes = Math.max(0, this.index.totalBytes - entry.bytes);
       await this.saveIndex();
@@ -69,8 +69,15 @@ export class AudioCache {
     }
 
     const audio = await adapter.readBinary(audioPath);
-    const alignmentJson = await adapter.read(alignPath);
-    const alignment = JSON.parse(alignmentJson) as CharAlignment;
+    let alignment: CharAlignment | undefined;
+    if (await adapter.exists(alignPath)) {
+      try {
+        const alignmentJson = await adapter.read(alignPath);
+        alignment = JSON.parse(alignmentJson) as CharAlignment;
+      } catch {
+        // Corrupt alignment file — proceed without it; player will synthesize.
+      }
+    }
 
     entry.lastUsed = Date.now();
     await this.saveIndex();
@@ -81,16 +88,19 @@ export class AudioCache {
   async set(
     hash: string,
     audio: ArrayBuffer,
-    alignment: CharAlignment,
+    alignment: CharAlignment | undefined,
   ): Promise<void> {
     const adapter = this.app.vault.adapter;
     const audioPath = normalizePath(`${this.cacheDir}/${hash}.mp3`);
     const alignPath = normalizePath(`${this.cacheDir}/${hash}.json`);
-    const alignmentJson = JSON.stringify(alignment);
-    const totalBytes = audio.byteLength + alignmentJson.length;
 
     await adapter.writeBinary(audioPath, audio);
-    await adapter.write(alignPath, alignmentJson);
+    let totalBytes = audio.byteLength;
+    if (alignment) {
+      const alignmentJson = JSON.stringify(alignment);
+      totalBytes += alignmentJson.length;
+      await adapter.write(alignPath, alignmentJson);
+    }
 
     const prev = this.index.entries[hash];
     if (prev) this.index.totalBytes -= prev.bytes;
@@ -154,10 +164,16 @@ export class CachedTTSProvider implements TTSProvider {
   constructor(
     private base: TTSProvider,
     private cache: AudioCache,
+    private providerId: string,
   ) {}
 
   async generate(opts: TTSGenerateOptions): Promise<TTSResult> {
-    const hash = await hashKey(opts.text, opts.voiceId, opts.modelId);
+    const hash = await hashKey(
+      this.providerId,
+      opts.text,
+      opts.voiceId,
+      opts.modelId,
+    );
     const hit = await this.cache.get(hash);
     if (hit) return hit;
 
@@ -168,11 +184,12 @@ export class CachedTTSProvider implements TTSProvider {
 }
 
 async function hashKey(
+  providerId: string,
   text: string,
   voiceId: string,
   modelId: string,
 ): Promise<string> {
-  const data = `${voiceId}|${modelId}|${text}`;
+  const data = `${providerId}|${voiceId}|${modelId}|${text}`;
   const buf = new TextEncoder().encode(data);
   const hashBuf = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(hashBuf))

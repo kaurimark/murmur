@@ -8,7 +8,7 @@ const MAX_CONSECUTIVE_FAILURES = 3;
 
 interface CachedSegment {
   audio: ArrayBuffer;
-  alignment: CharAlignment;
+  alignment?: CharAlignment;
 }
 
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused";
@@ -211,13 +211,27 @@ export class SegmentPlayer {
     this.currentAudio = new Audio(this.currentUrl);
     this.currentAudio.playbackRate = this.playbackRate;
 
+    // Providers without character-level alignment (e.g. OpenAI) leave
+    // cached.alignment undefined. Synthesize a uniform alignment from the
+    // actual audio duration as soon as metadata loads — karaoke highlight
+    // still works, just at coarser precision.
+    this.currentAudio.addEventListener("loadedmetadata", () => {
+      if (cached.alignment || !this.currentAudio) return;
+      const dur = this.currentAudio.duration;
+      if (Number.isFinite(dur) && dur > 0) {
+        cached.alignment = synthesizeAlignment(this.segments[i].text, dur);
+      }
+    });
+
     this.currentAudio.addEventListener("timeupdate", () => {
       if (!this.currentAudio || this.stopped) return;
-      this.callbacks.onProgress?.(
-        this.segments[i],
-        cached.alignment,
-        this.currentAudio.currentTime,
-      );
+      if (cached.alignment) {
+        this.callbacks.onProgress?.(
+          this.segments[i],
+          cached.alignment,
+          this.currentAudio.currentTime,
+        );
+      }
       this.callbacks.onTick?.(this.virtualCurrentTime(), this.totalEstimateSec);
     });
 
@@ -283,6 +297,25 @@ export class SegmentPlayer {
     if (this.pendingTimeout !== null) return "playing";
     return "loading";
   }
+}
+
+function synthesizeAlignment(
+  text: string,
+  durationSec: number,
+): CharAlignment {
+  const characters = Array.from(text);
+  const charStartTimesSeconds: number[] = [];
+  const charEndTimesSeconds: number[] = [];
+  const n = characters.length;
+  if (n === 0 || !Number.isFinite(durationSec) || durationSec <= 0) {
+    return { characters, charStartTimesSeconds, charEndTimesSeconds };
+  }
+  const perChar = durationSec / n;
+  for (let i = 0; i < n; i++) {
+    charStartTimesSeconds.push(i * perChar);
+    charEndTimesSeconds.push((i + 1) * perChar);
+  }
+  return { characters, charStartTimesSeconds, charEndTimesSeconds };
 }
 
 function pauseAfter(kind: SegmentKind): number {

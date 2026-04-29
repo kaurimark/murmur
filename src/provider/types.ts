@@ -6,7 +6,11 @@ export interface CharAlignment {
 
 export interface TTSResult {
   audio: ArrayBuffer;
-  alignment: CharAlignment;
+  // Optional: providers like ElevenLabs return character-level timing data.
+  // When omitted (e.g., OpenAI TTS), the player synthesizes a uniform
+  // alignment from audio duration so karaoke highlighting still works,
+  // just at coarser precision.
+  alignment?: CharAlignment;
 }
 
 export interface TTSGenerateOptions {

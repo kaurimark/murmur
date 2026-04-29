@@ -1,7 +1,9 @@
 import { MarkdownView, Notice, Plugin, TFile } from "obsidian";
 import type { EditorView } from "@codemirror/view";
 import { ElevenLabsProvider } from "./provider/elevenlabs";
+import { OpenAIProvider } from "./provider/openai";
 import { AudioCache, CachedTTSProvider } from "./provider/cache";
+import type { TTSProvider } from "./provider/types";
 import { markdownToSegments } from "./segmenter";
 import type { Segment } from "./segmenter";
 import { SegmentPlayer } from "./audio/player";
@@ -18,7 +20,13 @@ import {
   widgetField,
   WidgetState,
 } from "./ui/player-widget";
-import { DEFAULT_SETTINGS, MurmurSettings, MurmurSettingTab } from "./settings";
+import {
+  DEFAULT_SETTINGS,
+  MurmurSettings,
+  MurmurSettingTab,
+  mergeWithDefaults,
+  migrateSettings,
+} from "./settings";
 import type { CharAlignment } from "./provider/types";
 
 export default class MurmurPlugin extends Plugin {
@@ -101,7 +109,11 @@ export default class MurmurPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const raw = (await this.loadData()) as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    this.settings = mergeWithDefaults(migrateSettings(raw));
   }
 
   async saveSettings() {
@@ -190,10 +202,26 @@ export default class MurmurPlugin extends Plugin {
     this.readText(text, view.file?.path ?? null);
   }
 
+  private activeProviderConfig() {
+    return this.settings.provider === "openai"
+      ? this.settings.openai
+      : this.settings.elevenlabs;
+  }
+
+  private buildProvider(): TTSProvider | null {
+    const cfg = this.activeProviderConfig();
+    if (!cfg.apiKey) return null;
+    if (this.settings.provider === "openai") {
+      return new OpenAIProvider(cfg.apiKey);
+    }
+    return new ElevenLabsProvider(cfg.apiKey);
+  }
+
   private readText(text: string, notePath: string | null) {
-    const { apiKey, voiceId, modelId } = this.settings;
-    if (!apiKey) {
-      new Notice("murmur: enter your ElevenLabs API key in settings.");
+    const providerConfig = this.activeProviderConfig();
+    if (!providerConfig.apiKey) {
+      const name = this.settings.provider === "openai" ? "OpenAI" : "ElevenLabs";
+      new Notice(`murmur: enter your ${name} API key in settings.`);
       return;
     }
 
@@ -207,18 +235,26 @@ export default class MurmurPlugin extends Plugin {
     this.playingNotePath = notePath;
     this.lastHighlight = null;
 
+    const baseProvider = this.buildProvider();
+    if (!baseProvider) return;
     const provider = new CachedTTSProvider(
-      new ElevenLabsProvider(apiKey),
+      baseProvider,
       this.cache,
+      this.settings.provider,
     );
-    this.player = new SegmentPlayer(provider, voiceId, modelId, {
-      onError: (msg) => new Notice(`murmur: ${msg}`),
-      onProgress: (segment, alignment, timeSec) =>
-        this.updateHighlight(segment, alignment, timeSec),
-      onTick: (cur, dur) => emitWidgetTick(cur, dur),
-      onComplete: () => this.handlePlaybackEnd(),
-      onStateChange: (state) => this.updatePlayerState(state),
-    });
+    this.player = new SegmentPlayer(
+      provider,
+      providerConfig.voiceId,
+      providerConfig.modelId,
+      {
+        onError: (msg) => new Notice(`murmur: ${msg}`),
+        onProgress: (segment, alignment, timeSec) =>
+          this.updateHighlight(segment, alignment, timeSec),
+        onTick: (cur, dur) => emitWidgetTick(cur, dur),
+        onComplete: () => this.handlePlaybackEnd(),
+        onStateChange: (state) => this.updatePlayerState(state),
+      },
+    );
     this.player.setSpeed(this.lastPlaybackRate);
     void this.player.play(segments);
   }
