@@ -59,7 +59,7 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   fishaudio: {
     apiKey: "",
     voiceId: "",
-    modelId: "s1",
+    modelId: "s2-pro",
   },
   cacheSizeMB: 500,
   alwaysShowWidget: false,
@@ -396,17 +396,21 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Voice (reference) ID")
       .setDesc(
-        "Fish Audio voice/reference ID. Browse the voice library at fish.audio and copy the ID.",
+        "The hex ID of the voice you want to use. Find it at fish.audio: open a voice in the library — the URL looks like fish.audio/m/<id>. Copy the part after /m/ (~32 hex characters).",
       )
       .addText((text) =>
-        text.setValue(cfg.voiceId).onChange(async (value) => {
-          cfg.voiceId = value.trim();
-          await this.plugin.saveSettings();
-        }),
+        text
+          .setPlaceholder("e.g. 802e3bc2b27e49c2995d23ef70e6ac89")
+          .setValue(cfg.voiceId)
+          .onChange(async (value) => {
+            cfg.voiceId = value.trim();
+            await this.plugin.saveSettings();
+          }),
       );
 
     new Setting(containerEl)
       .setName("Model")
+      .setDesc("S2 Pro is Fish Audio's current state of the art. S1 is legacy.")
       .addDropdown((dropdown) => {
         for (const m of FISHAUDIO_MODELS) {
           dropdown.addOption(m.id, m.label);

@@ -45,6 +45,18 @@ export default class MurmurPlugin extends Plugin {
   private floatingWidget: HTMLElement | null = null;
 
   async onload() {
+    // Defensive: sweep any orphaned floating widgets from prior plugin
+    // lifecycles (esbuild hot reload, partial unloads, dev iteration). Each
+    // module reload creates a fresh `actions` variable; widgets created by
+    // the old module reference its now-null `actions` and become dead — drag
+    // and click stop working. Cleaning at load time guarantees the user only
+    // sees the live widget.
+    for (const el of Array.from(
+      document.querySelectorAll(".murmur-floating"),
+    )) {
+      el.remove();
+    }
+
     await this.loadSettings();
 
     this.cache = new AudioCache(
@@ -112,6 +124,13 @@ export default class MurmurPlugin extends Plugin {
   async onunload() {
     setWidgetActions(null);
     this.unmountFloating();
+    // Defensive: clear any stale floating widget DOM that may have escaped
+    // unmountFloating (e.g. partial unload, dev reload races).
+    for (const el of Array.from(
+      document.querySelectorAll(".murmur-floating"),
+    )) {
+      el.remove();
+    }
     this.stopPlayback();
   }
 
@@ -128,19 +147,20 @@ export default class MurmurPlugin extends Plugin {
   }
 
   refreshWidget(): void {
-    const view = this.getActiveEditorView();
-    const state = this.buildWidgetState(view);
+    const activeView = this.getActiveEditorView();
+    const state = this.buildWidgetState(activeView);
 
     if (this.settings.widgetPlacement === "floating") {
-      // Suppress the inline widget when in floating mode.
-      if (view) {
+      // Suppress the inline widget on EVERY open editor — split views would
+      // otherwise leave a stale inline widget alongside the floating one.
+      for (const view of this.getAllEditorViews()) {
         view.dispatch({ effects: setWidgetState.of(null) });
       }
       this.refreshFloating(state);
     } else {
       this.unmountFloating();
-      if (view) {
-        view.dispatch({ effects: setWidgetState.of(state) });
+      if (activeView) {
+        activeView.dispatch({ effects: setWidgetState.of(state) });
       }
     }
   }
@@ -205,6 +225,16 @@ export default class MurmurPlugin extends Plugin {
   }
 
   private mountFloating(state: WidgetState): void {
+    // Defensive: sweep any orphaned floating widgets from prior plugin
+    // lifecycles. If the previous instance's onunload didn't fully clean up
+    // (plugin reload during dev, etc.), we'd otherwise stack multiple
+    // floating widgets on top of each other.
+    for (const el of Array.from(
+      document.querySelectorAll(".murmur-floating"),
+    )) {
+      el.remove();
+    }
+
     const dom = createFloatingWidget(state);
     dom.style.position = "fixed";
     dom.style.zIndex = "1000";
@@ -331,6 +361,17 @@ export default class MurmurPlugin extends Plugin {
       const view = leaf.view;
       if (!(view instanceof MarkdownView)) continue;
       if (view.file?.path !== this.playingNotePath) continue;
+      const cm = (view.editor as unknown as { cm?: EditorView }).cm;
+      if (cm) views.push(cm);
+    }
+    return views;
+  }
+
+  private getAllEditorViews(): EditorView[] {
+    const views: EditorView[] = [];
+    for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView)) continue;
       const cm = (view.editor as unknown as { cm?: EditorView }).cm;
       if (cm) views.push(cm);
     }

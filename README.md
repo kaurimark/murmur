@@ -65,3 +65,7 @@ Plugin entry: `src/main.ts`. Build output: `main.js` (committed at release tags 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Support
+
+If Murmur has been useful and you'd like to say thanks: [buymeacoffee.com/kaurimarkkanen](https://buymeacoffee.com/kaurimarkkanen). Entirely optional, deeply appreciated.

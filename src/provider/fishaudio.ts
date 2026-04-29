@@ -3,10 +3,12 @@ import type { TTSGenerateOptions, TTSProvider, TTSResult } from "./types";
 
 const FISHAUDIO_BASE = "https://api.fish.audio/v1";
 
+// Verified against Fish Audio's API reference docs (April 2026):
+// the only `model` header values accepted are `s2-pro` (default, recommended)
+// and `s1` (legacy).
 export const FISHAUDIO_MODELS = [
-  { id: "s1", label: "S1 (current state of the art)" },
-  { id: "s1-mini", label: "S1 Mini (faster, cheaper)" },
-  { id: "speech-1.6", label: "Speech 1.6 (older)" },
+  { id: "s2-pro", label: "S2 Pro (newest, recommended)" },
+  { id: "s1", label: "S1 (legacy)" },
 ] as const;
 
 export class FishAudioProvider implements TTSProvider {
