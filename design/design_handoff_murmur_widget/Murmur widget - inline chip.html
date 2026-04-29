@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Murmur — inline chip (V2)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #f4f1ea; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; height: 100%; }
+    .frame-host { position: relative; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="note-frame.jsx"></script>
+  <script type="text/babel" src="v1-inline-chip-v2.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="env,react">
+    const Render = ({ playing, dark, demo }) => (
+      <div className="frame-host">
+        <NoteFrame theme={dark ? "dark" : "light"}>
+          <div style={{ paddingBottom: 24 }}>
+            <V1ChipV2 playing={playing} dark={dark} demo={demo} />
+          </div>
+        </NoteFrame>
+      </div>
+    );
+
+    function App() {
+      return (
+        <DesignCanvas
+          title="Murmur — inline chip, refined"
+          subtitle="Idle now shows duration. Smooth expansion to the playing state. The 'Live demo' artboards are clickable — click the idle chip to see the transition; click ✕ to collapse."
+        >
+          <DCSection
+            id="live"
+            title="Live demo — click to toggle"
+            subtitle="The chip animates between states using CSS transitions on max-width, padding, opacity, and transform. Both faces share one container so the morph reads as one element."
+          >
+            <DCArtboard id="live-light" label="Light · click chip" width={760} height={300}>
+              <Render playing={false} dark={false} demo={true} />
+            </DCArtboard>
+            <DCArtboard id="live-dark" label="Dark · click chip" width={760} height={300}>
+              <Render playing={false} dark={true} demo={true} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="static"
+            title="Static states (for comparison)"
+            subtitle="Same chip frozen in idle and playing, light + dark, so you can scan the resting compositions."
+          >
+            <DCArtboard id="static-light-idle" label="Light · idle" width={760} height={300}>
+              <Render playing={false} dark={false} demo={false} />
+            </DCArtboard>
+            <DCArtboard id="static-light-playing" label="Light · playing" width={760} height={300}>
+              <Render playing={true} dark={false} demo={false} />
+            </DCArtboard>
+            <DCArtboard id="static-dark-idle" label="Dark · idle" width={760} height={300}>
+              <Render playing={false} dark={true} demo={false} />
+            </DCArtboard>
+            <DCArtboard id="static-dark-playing" label="Dark · playing" width={760} height={300}>
+              <Render playing={true} dark={true} demo={false} />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

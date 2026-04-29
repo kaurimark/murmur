@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>murmur — tape-deck prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,400;1,500&family=VT323&family=Cormorant+Garamond:ital@1&display=swap" rel="stylesheet" />
+  <style>
+    /* Departure Mono is the intended pixel-grid font for the timer + speed.
+       Drop DepartureMono.woff2 in this folder to see it. Without it, falls back
+       to VT323 (close pixel-grid vibe) → JetBrains Mono → system mono. */
+    @font-face {
+      font-family: "Departure Mono";
+      src: url("./DepartureMono.woff2") format("woff2"),
+           url("./DepartureMono.otf") format("opentype");
+      font-display: swap;
+    }
+
+    :root {
+      --grid-bg: #ece7d9;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--grid-bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      color: #2a2622;
+      padding: 32px 24px 64px;
+    }
+
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 30px;
+      margin: 0 0 6px;
+    }
+
+    .lede {
+      max-width: 720px;
+      color: #5b5345;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 32px;
+    }
+
+    .lede code {
+      background: #d9d1bd;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: "VT323", "JetBrains Mono", monospace;
+      font-size: 13px;
+    }
+
+    .section-title {
+      font-family: "Fraunces", Georgia, serif;
+      font-style: italic;
+      font-weight: 500;
+      font-size: 18px;
+      color: #4a4338;
+      margin: 36px 0 14px;
+      letter-spacing: 0.01em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+      gap: 20px;
+    }
+
+    .artboard {
+      background: #fbf9f3;
+      border: 1px solid #d3cdbe;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 8px 24px -16px rgba(0,0,0,0.15);
+    }
+
+    .artboard-label {
+      font-family: "VT323", "JetBrains Mono", monospace;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      color: #6f6555;
+      padding: 8px 14px;
+      background: #f4efe1;
+      border-bottom: 1px solid #d8d1bf;
+      text-transform: uppercase;
+    }
+
+    /* ---------- Simulated Obsidian note ---------- */
+    .page {
+      padding: 28px 32px 36px;
+      min-height: 280px;
+    }
+
+    .page[data-theme="light"] {
+      --background-primary: #faf8f3;
+      --background-secondary: #f1ede2;
+      --background-modifier-border: #d8d2c4;
+      --background-modifier-hover: #e8e3d3;
+      --text-normal: #2e2a24;
+      --text-muted: #76705e;
+      --text-faint: #a89f88;
+      --text-accent: #886b3d;
+      background: var(--background-primary);
+      color: var(--text-normal);
+    }
+
+    .page[data-theme="dark"] {
+      --background-primary: #1d1c1a;
+      --background-secondary: #262420;
+      --background-modifier-border: #3a3832;
+      --background-modifier-hover: #393631;
+      --text-normal: #e8e3d4;
+      --text-muted: #aea38a;
+      --text-faint: #786e58;
+      --text-accent: #d4ad77;
+      background: var(--background-primary);
+      color: var(--text-normal);
+    }
+
+    .note-title {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 500;
+      font-style: italic;
+      font-size: 28px;
+      margin: 0 0 18px;
+      color: var(--text-normal);
+      letter-spacing: -0.01em;
+    }
+
+    .body {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 16px;
+      line-height: 1.65;
+      color: var(--text-normal);
+      max-width: 56ch;
+      margin: 22px 0 0;
+    }
+
+    .body em { font-style: italic; }
+
+    /* =========================================================
+       TAPE-DECK WIDGET
+       ========================================================= */
+    .deck {
+      display: inline-flex;
+      align-items: center;
+      height: 50px;
+      padding: 0 14px 0 10px;
+      gap: 12px;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 12px;
+      box-sizing: border-box;
+      max-width: 480px;
+      width: 100%;
+    }
+
+    /* --- Disc (play / pause) --- */
+    .deck-disc {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--text-normal);
+      position: relative;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      flex-shrink: 0;
+      outline: none;
+    }
+
+    .deck-disc:focus-visible {
+      outline: 2px solid var(--text-accent);
+      outline-offset: 2px;
+    }
+
+    .deck-disc-mark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) translateX(7.5px);
+      font-family: "Fraunces", Georgia, serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: 11px;
+      color: var(--background-primary);
+      line-height: 1;
+      pointer-events: none;
+      letter-spacing: 0;
+    }
+
+    .deck[data-state="playing"] .deck-disc {
+      animation: deck-spin 3s linear infinite;
+    }
+
+    /* Variant: mark counter-rotates so it stays upright while disc spins. */
+    .deck[data-mark="upright"][data-state="playing"] .deck-disc-mark {
+      animation: deck-mark-counter 3s linear infinite;
+    }
+
+    @keyframes deck-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes deck-mark-counter {
+      from { transform: translate(-50%, -50%) translateX(7.5px) rotate(0deg); }
+      to   { transform: translate(-50%, -50%) translateX(7.5px) rotate(-360deg); }
+    }
+
+    /* --- Skip cluster --- */
+    .deck-skip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .deck-icon-btn {
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      border-radius: 4px;
+    }
+
+    .deck-icon-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+    .deck-icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .deck-close { color: var(--text-faint); }
+
+    /* --- Time + scrubber --- */
+    .deck-time {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .deck-time-current,
+    .deck-time-duration {
+      font-family: "Departure Mono", "VT323", "JetBrains Mono", monospace;
+      font-size: 13px;
+      line-height: 1;
+      letter-spacing: 0;
+      flex-shrink: 0;
+    }
+
+    .deck-time-current { color: var(--text-normal); }
+    .deck-time-duration { color: var(--text-faint); }
+
+    .deck-track {
+      flex: 1;
+      height: 3px;
+      background: var(--background-modifier-border);
+      border-radius: 999px;
+      position: relative;
+      cursor: pointer;
+      min-width: 60px;
+    }
+
+    .deck-track-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 28%;
+      background: var(--text-normal);
+      border-radius: 999px;
+    }
+
+    /* --- Speed --- */
+    .deck-speed {
+      font-family: "Departure Mono", "VT323", "JetBrains Mono", monospace;
+      font-size: 13px;
+      background: transparent;
+      border: 0;
+      color: var(--text-muted);
+      padding: 4px 6px;
+      height: 26px;
+      cursor: pointer;
+      flex-shrink: 0;
+      letter-spacing: 0.01em;
+      border-radius: 4px;
+    }
+    .deck-speed:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+
+    /* =========================================================
+       INLINE CHIP (current design — for size comparison)
+       ========================================================= */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 10px 0 4px;
+      max-width: 380px;
+      background: var(--background-secondary);
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 999px;
+      gap: 10px;
+      font-family: var(--font-interface, system-ui, sans-serif);
+      font-size: 12px;
+      box-sizing: border-box;
+    }
+
+    .chip-primary {
+      width: 24px; height: 24px;
+      border-radius: 999px;
+      background: var(--text-normal);
+      color: var(--background-primary);
+      border: 0; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .chip-primary svg { width: 10px; height: 10px; stroke: currentColor; fill: currentColor; }
+
+    .chip-skip { display: inline-flex; gap: 2px; }
+
+    .chip-icon-btn {
+      width: 22px; height: 22px;
+      background: transparent; border: 0; padding: 0;
+      color: var(--text-muted);
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border-radius: 4px;
+    }
+    .chip-icon-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .chip-close { color: var(--text-faint); }
+
+    .chip-time {
+      display: flex; align-items: center; gap: 8px;
+      width: 130px; flex-shrink: 0;
+    }
+    .chip-time-current, .chip-time-duration {
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+    }
+    .chip-time-current { color: var(--text-muted); }
+    .chip-time-duration { color: var(--text-faint); }
+    .chip-track { flex: 1; height: 2px; background: var(--background-modifier-border); border-radius: 999px; position: relative; }
+    .chip-track-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 28%; background: var(--text-normal); border-radius: 999px; }
+
+    .chip-speed {
+      font-size: 11px;
+      background: transparent; border: 0;
+      color: var(--text-muted);
+      padding: 0 6px; height: 22px;
+      flex-shrink: 0; border-radius: 4px;
+      font-family: inherit;
+    }
+
+    /* =========================================================
+       Comparison row (chip vs. deck side-by-side)
+       ========================================================= */
+    .compare-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      align-items: flex-start;
+    }
+    .compare-stack > .compare-row {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .compare-row .label {
+      font-family: "VT323", "JetBrains Mono", monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+      width: 90px;
+      flex-shrink: 0;
+    }
+
+    /* Prototype intentionally ignores prefers-reduced-motion so the
+       motion design can be evaluated regardless of system setting. The
+       production plugin CSS will respect it. */
+  </style>
+</head>
+<body>
+  <h1>murmur — tape-deck prototype</h1>
+  <p class="lede">
+    Sizes for review: deck height <code>50px</code>, disc <code>36px</code>, timer + speed <code>13px</code> in Departure Mono on the pixel grid (with <code>VT323</code> as fallback if Departure Mono isn't installed locally — drop <code>DepartureMono.woff2</code> in this folder to see the real thing). Mark is Fraunces Italic <em>m</em> at <code>11px</code> weight 300, upright, off-center to the right of disc center. Disc rotates one revolution per <code>3s</code> while playing. The "mark behavior" comparison row at the bottom shows the two options: mark rotating with the disc (going upside-down half the time) versus mark counter-rotating to stay upright.
+  </p>
+
+  <div class="section-title">Tape-deck</div>
+  <div class="grid">
+
+    <article class="artboard">
+      <div class="artboard-label">Light · playing</div>
+      <div class="page" data-theme="light">
+        <div class="note-title">on listening</div>
+        <div class="deck" data-state="playing">
+          <button class="deck-disc" aria-label="Pause">
+            <span class="deck-disc-mark">m</span>
+          </button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn" aria-label="Previous segment">
+              <svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+            </button>
+            <button class="deck-icon-btn" aria-label="Next segment">
+              <svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            </button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">2:13</span>
+            <div class="deck-track"><div class="deck-track-fill"></div></div>
+            <span class="deck-time-duration">8:42</span>
+          </div>
+          <button class="deck-speed">1×</button>
+          <button class="deck-icon-btn deck-close" aria-label="Stop">
+            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <p class="body">A tape deck inside a library. The mechanism is honest about being a mechanism. The page is honest about being a page. Neither pretends to be the other, and the contrast is the point — pixel-grid timer over serif prose, the disc turning in slow time while you read along.</p>
+      </div>
+    </article>
+
+    <article class="artboard">
+      <div class="artboard-label">Light · paused</div>
+      <div class="page" data-theme="light">
+        <div class="note-title">on listening</div>
+        <div class="deck" data-state="paused">
+          <button class="deck-disc" aria-label="Play"><span class="deck-disc-mark">m</span></button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn" aria-label="Previous segment"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+            <button class="deck-icon-btn" aria-label="Next segment"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">2:13</span>
+            <div class="deck-track"><div class="deck-track-fill"></div></div>
+            <span class="deck-time-duration">8:42</span>
+          </div>
+          <button class="deck-speed">1×</button>
+          <button class="deck-icon-btn deck-close" aria-label="Stop"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p class="body">Paused: the mechanism is there even when stopped. The mark stays visible — you can see where the disc would resume. No ghost of the playing icon, no separate "paused" badge.</p>
+      </div>
+    </article>
+
+    <article class="artboard">
+      <div class="artboard-label">Dark · playing</div>
+      <div class="page" data-theme="dark">
+        <div class="note-title">on listening</div>
+        <div class="deck" data-state="playing">
+          <button class="deck-disc" aria-label="Pause"><span class="deck-disc-mark">m</span></button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn" aria-label="Previous segment"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+            <button class="deck-icon-btn" aria-label="Next segment"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">2:13</span>
+            <div class="deck-track"><div class="deck-track-fill"></div></div>
+            <span class="deck-time-duration">8:42</span>
+          </div>
+          <button class="deck-speed">1.25×</button>
+          <button class="deck-icon-btn deck-close" aria-label="Stop"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p class="body">Theme-agnostic: bg-derived <em>m</em> punches through whatever the user's palette serves. Disc is <code style="font-family:'VT323',monospace; font-size: 14px;">--text-normal</code>, mark is <code style="font-family:'VT323',monospace; font-size: 14px;">--background-primary</code>.</p>
+      </div>
+    </article>
+
+    <article class="artboard">
+      <div class="artboard-label">Dark · paused (long timer)</div>
+      <div class="page" data-theme="dark">
+        <div class="note-title">on listening</div>
+        <div class="deck" data-state="paused">
+          <button class="deck-disc" aria-label="Play"><span class="deck-disc-mark">m</span></button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn" aria-label="Previous segment"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+            <button class="deck-icon-btn" aria-label="Next segment"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">14:38</span>
+            <div class="deck-track"><div class="deck-track-fill" style="width:62%"></div></div>
+            <span class="deck-time-duration">23:51</span>
+          </div>
+          <button class="deck-speed">1.5×</button>
+          <button class="deck-icon-btn deck-close" aria-label="Stop"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p class="body">Long-form sanity check: <em>14:38 / 23:51</em> still fits comfortably with the scrubber sized for breathing room. Five-character timers are the upper bound of what the inline chip's <code style="font-family:'VT323',monospace; font-size: 14px;">130px</code> time-block could ever fit; the deck has plenty of slack.</p>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="section-title">Side-by-side · inline chip vs. tape-deck</div>
+  <div class="grid">
+    <article class="artboard">
+      <div class="artboard-label">Light · same context, two themes</div>
+      <div class="page" data-theme="light">
+        <div class="compare-stack">
+          <div class="compare-row">
+            <span class="label">chip</span>
+            <div class="chip">
+              <button class="chip-primary" aria-label="Pause">
+                <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
+              </button>
+              <div class="chip-skip">
+                <button class="chip-icon-btn"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+                <button class="chip-icon-btn"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+              </div>
+              <div class="chip-time">
+                <span class="chip-time-current">2:13</span>
+                <div class="chip-track"><div class="chip-track-fill"></div></div>
+                <span class="chip-time-duration">8:42</span>
+              </div>
+              <button class="chip-speed">1×</button>
+              <button class="chip-icon-btn chip-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+          </div>
+          <div class="compare-row">
+            <span class="label">deck</span>
+            <div class="deck" data-state="playing">
+              <button class="deck-disc"><span class="deck-disc-mark">m</span></button>
+              <div class="deck-skip">
+                <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+                <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+              </div>
+              <div class="deck-time">
+                <span class="deck-time-current">2:13</span>
+                <div class="deck-track"><div class="deck-track-fill"></div></div>
+                <span class="deck-time-duration">8:42</span>
+              </div>
+              <button class="deck-speed">1×</button>
+              <button class="deck-icon-btn deck-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <p class="body" style="margin-top: 28px;">Chip is <strong>32px</strong> tall, deck is <strong>50px</strong> — about 1.6× taller. Different philosophies sharing the same plumbing: chip retreats into the chrome, deck sits in the page like a piece of equipment.</p>
+      </div>
+    </article>
+  </div>
+
+  <div class="section-title">Mark behavior · rotates-with-disc vs. stays-upright</div>
+  <div class="grid">
+    <article class="artboard">
+      <div class="artboard-label">Light · mark rotates with disc</div>
+      <div class="page" data-theme="light">
+        <div class="deck" data-state="playing">
+          <button class="deck-disc" aria-label="Pause"><span class="deck-disc-mark">m</span></button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+            <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">2:13</span>
+            <div class="deck-track"><div class="deck-track-fill"></div></div>
+            <span class="deck-time-duration">8:42</span>
+          </div>
+          <button class="deck-speed">1×</button>
+          <button class="deck-icon-btn deck-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p class="body" style="margin-top: 22px;">The mark goes around with the disc. It's right-side-up half the time and upside-down the other half. Mechanically truthful: a real knob's indicator does this. The mark reads as ornament rather than as a letter, which is the design intent.</p>
+      </div>
+    </article>
+
+    <article class="artboard">
+      <div class="artboard-label">Light · mark stays upright</div>
+      <div class="page" data-theme="light">
+        <div class="deck" data-state="playing" data-mark="upright">
+          <button class="deck-disc" aria-label="Pause"><span class="deck-disc-mark">m</span></button>
+          <div class="deck-skip">
+            <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+            <button class="deck-icon-btn"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+          </div>
+          <div class="deck-time">
+            <span class="deck-time-current">2:13</span>
+            <div class="deck-track"><div class="deck-track-fill"></div></div>
+            <span class="deck-time-duration">8:42</span>
+          </div>
+          <button class="deck-speed">1×</button>
+          <button class="deck-icon-btn deck-close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p class="body" style="margin-top: 22px;">The mark orbits around the disc center but counter-rotates to stay upright — always reads as <em>m</em>. Less mechanically truthful (a real indicator pivots with the dial) but more readable. Picks up a "compass needle" feel.</p>
+      </div>
+    </article>
+  </div>
+</body>
+</html>

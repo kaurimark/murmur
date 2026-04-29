@@ -159,3 +159,47 @@ User feedback: the karaoke highlight works but UI deserves polish — outline de
 - Optional underline-only style for users who find background highlights distracting
 
 **Why backlog.** v1 highlight is functional. Polish iteration deserves real listening sessions to tune.
+
+---
+
+## 13. Floating / pop-out widget mode
+
+**Problem.** When listening to a long note, the inline widget at the top scrolls out of view. Pausing, scrubbing, or changing speed requires scrolling back to the top — annoying mid-listen.
+
+**Idea.** Add a setting that switches the widget from inline (current behavior) to a floating pane that stays visible regardless of scroll position. Default position: bottom-right of the Obsidian window. Drag to reposition; persist position to plugin data.
+
+**Open questions.**
+- Does it follow scroll within a single pane, or anchor to the Obsidian window? (Probably window — that's the point.)
+- Per-vault or global persisted position?
+- What happens with multiple Obsidian windows / split panes? One floating widget per window, or one global?
+- Snap-to-corner behavior, or pixel-precise drag?
+- When alwaysShow is false and not playing, does the floating widget hide entirely, or show the idle pill in its floating spot?
+- Interaction with the tape-deck redesign — same controls, just in a draggable container.
+
+**Mechanism.** Implementation candidates: Obsidian's `Modal` is wrong (modal blocks). A custom DOM element appended to `document.body` with `position: fixed` and `pointer-events: auto` would work; needs `ItemView` or a plain div. Drag via `mousedown`/`mousemove`/`mouseup` with bounds clamping.
+
+**Prereqs.** Stable v1 inline widget. Worth building after the tape-deck redesign so the floating version inherits the final visual.
+
+---
+
+## 14. Widget theme switcher
+
+**Idea.** A setting that picks the visual style of the player widget. Two themes to start:
+
+- **Inline chip** (current). Compact pill, idle ↔ playing morph, conventional play/pause icon. The current implementation in `src/ui/player-widget.ts` and the chip CSS — preserved as-is.
+- **Tape-deck** (new). Per [design-decisions.md](design-decisions.md). Larger footprint, pixel-grid timer (Departure Mono), rotating disc with `m` mark, single-block speed wheel, retro-mechanical character.
+
+**Why both.** The inline chip is small and unobtrusive — appropriate for users who want a TTS plugin to fade into Obsidian's chrome. The tape-deck is bold and characterful — appropriate for users who want the player to be a *thing*. Forcing one philosophy is a choice we don't have to make.
+
+The only competing TTS plugin (Microsoft Edge TTS, reportedly buggy) doesn't address this dimension at all. Shipping two visual modes is a real differentiator without doubling the surface area meaningfully — most code (player, segmenter, cache, settings) is shared.
+
+**Sizing note.** The inline chip is fine at its current ~32px height. The tape-deck theme should be ~50–100% taller to give the disc and timer room. Actual pixel values to be set during tape-deck implementation, but the size difference between themes is intentional — small-and-quiet vs. tall-and-mechanical.
+
+**Implementation sketch.**
+- `MurmurSettings.widgetTheme: "inline-chip" | "tape-deck"` with default `"inline-chip"` (so existing users don't get a surprise visual change on update).
+- Settings tab: dropdown to pick.
+- `player-widget.ts` becomes a dispatcher that picks one of two `WidgetType` implementations based on the current setting. Or two separate WidgetType classes registered conditionally.
+- Each theme has its own CSS namespace (`.murmur-chip-*` for inline, e.g. `.murmur-deck-*` for tape-deck) — no shared rules, no leak between themes.
+- Switching themes at runtime should update visible widgets without a reload — straightforward via `refreshWidget()`.
+
+**Prereqs.** Tape-deck implementation. Until then, this is one theme with no switcher.
