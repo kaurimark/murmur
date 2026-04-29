@@ -34,6 +34,14 @@ export class FishAudioProvider implements TTSProvider {
       throw: false,
     });
 
+    if (response.status === 402) {
+      // Fish Audio's web subscription credits and the API wallet are
+      // separate billing tracks. Plus subscribers still need to fund the
+      // API wallet at fish.audio/go-api before API calls work.
+      throw new Error(
+        "Fish Audio 402: API wallet is empty. Subscription credits cover the web UI only — fund the API wallet separately at fish.audio/go-api.",
+      );
+    }
     if (response.status !== 200) {
       throw new Error(
         `Fish Audio ${response.status}: ${describeError(response.text)}`,
