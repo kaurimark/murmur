@@ -3,12 +3,18 @@ import type MurmurPlugin from "./main";
 import { OPENAI_MODELS, OPENAI_VOICES } from "./provider/openai";
 import { CARTESIA_MODELS } from "./provider/cartesia";
 import { FISHAUDIO_MODELS } from "./provider/fishaudio";
+import { INWORLD_MODELS, INWORLD_VOICES } from "./provider/inworld";
 
 export type WidgetTheme = "inline-chip" | "tape-deck";
 
 export type WidgetPlacement = "inline" | "floating";
 
-export type ProviderId = "elevenlabs" | "openai" | "cartesia" | "fishaudio";
+export type ProviderId =
+  | "elevenlabs"
+  | "inworld"
+  | "openai"
+  | "cartesia"
+  | "fishaudio";
 
 export interface ProviderConfig {
   apiKey: string;
@@ -20,6 +26,7 @@ export type ElevenLabsConfig = ProviderConfig;
 export type OpenAIConfig = ProviderConfig;
 export type CartesiaConfig = ProviderConfig;
 export type FishAudioConfig = ProviderConfig;
+export type InworldConfig = ProviderConfig;
 
 export interface FloatingPosition {
   x: number;
@@ -29,6 +36,7 @@ export interface FloatingPosition {
 export interface MurmurSettings {
   provider: ProviderId;
   elevenlabs: ElevenLabsConfig;
+  inworld: InworldConfig;
   openai: OpenAIConfig;
   cartesia: CartesiaConfig;
   fishaudio: FishAudioConfig;
@@ -45,6 +53,11 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
     apiKey: "",
     voiceId: "21m00Tcm4TlvDq8ikWAM",
     modelId: "eleven_flash_v2_5",
+  },
+  inworld: {
+    apiKey: "",
+    voiceId: "Ashley",
+    modelId: "inworld-tts-1.5-max",
   },
   openai: {
     apiKey: "",
@@ -113,6 +126,10 @@ export function mergeWithDefaults(
       ...DEFAULT_SETTINGS.elevenlabs,
       ...(partial.elevenlabs ?? {}),
     },
+    inworld: {
+      ...DEFAULT_SETTINGS.inworld,
+      ...(partial.inworld ?? {}),
+    },
     openai: {
       ...DEFAULT_SETTINGS.openai,
       ...(partial.openai ?? {}),
@@ -140,11 +157,12 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("TTS provider")
       .setDesc(
-        "ElevenLabs gives precise word-level karaoke highlighting but costs more. Fish Audio currently leads quality leaderboards at ~10× lower cost. Cartesia is similar quality and often cheaper. OpenAI is the cheapest. Karaoke is approximated from audio duration on Fish Audio, Cartesia, and OpenAI.",
+        "Inworld TTS 1.5 Max currently tops the Artificial Analysis Speech Arena at OpenAI-level pricing (~$35/1M chars). ElevenLabs gives precise word-level karaoke highlighting but costs ~10× more. Fish Audio and Cartesia are quality alternatives. OpenAI is the cheapest. Karaoke is approximated from audio duration on every provider except ElevenLabs.",
       )
       .addDropdown((dropdown) =>
         dropdown
           .addOption("elevenlabs", "ElevenLabs")
+          .addOption("inworld", "Inworld")
           .addOption("fishaudio", "Fish Audio")
           .addOption("cartesia", "Cartesia")
           .addOption("openai", "OpenAI")
@@ -158,6 +176,8 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     if (this.plugin.settings.provider === "elevenlabs") {
       this.renderElevenLabs();
+    } else if (this.plugin.settings.provider === "inworld") {
+      this.renderInworld();
     } else if (this.plugin.settings.provider === "cartesia") {
       this.renderCartesia();
     } else if (this.plugin.settings.provider === "fishaudio") {
@@ -415,6 +435,56 @@ export class MurmurSettingTab extends PluginSettingTab {
       .setDesc("S2 Pro is Fish Audio's current state of the art. S1 is legacy.")
       .addDropdown((dropdown) => {
         for (const m of FISHAUDIO_MODELS) {
+          dropdown.addOption(m.id, m.label);
+        }
+        dropdown.setValue(cfg.modelId).onChange(async (value) => {
+          cfg.modelId = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    this.renderPreviewButton();
+  }
+
+  private renderInworld(): void {
+    const { containerEl } = this;
+    const cfg = this.plugin.settings.inworld;
+
+    new Setting(containerEl)
+      .setName("Inworld API key")
+      .setDesc(
+        "Stored as plain text in your vault. Get one at platform.inworld.ai. The On-Demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("...")
+          .setValue(cfg.apiKey)
+          .onChange(async (value) => {
+            cfg.apiKey = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Voice")
+      .setDesc("One of Inworld's 22 stock voices.")
+      .addDropdown((dropdown) => {
+        for (const voice of INWORLD_VOICES) {
+          dropdown.addOption(voice, voice);
+        }
+        dropdown.setValue(cfg.voiceId).onChange(async (value) => {
+          cfg.voiceId = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Model")
+      .setDesc(
+        "TTS 1.5 Max is the flagship; 1.5 Mini trades a bit of quality for ~30% lower cost and faster response.",
+      )
+      .addDropdown((dropdown) => {
+        for (const m of INWORLD_MODELS) {
           dropdown.addOption(m.id, m.label);
         }
         dropdown.setValue(cfg.modelId).onChange(async (value) => {

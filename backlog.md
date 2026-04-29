@@ -167,10 +167,11 @@ User feedback: TTS that starts within 500ms of the trigger feels mechanical. Hum
 
 ## 11. More TTS providers
 
-Four cloud providers are now supported: ElevenLabs, Fish Audio (S2 Pro / S1), Cartesia (Sonic 3 / 2 / 1), OpenAI (tts-1 / tts-1-hd). The `TTSProvider` interface + multi-provider settings shape held up across all four — adding another cloud provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
+Five cloud providers are now supported: ElevenLabs, Inworld (TTS 1.5 Max / Mini), Fish Audio (S2 Pro / S1), Cartesia (Sonic 3 / 2 / 1), OpenAI (tts-1 / tts-1-hd). The `TTSProvider` interface + multi-provider settings shape held up across all five — adding another cloud provider is roughly the size of [src/provider/openai.ts](src/provider/openai.ts) plus a settings render method.
 
-**Worth integrating next:**
-- **Inworld TTS-1.5 MAX** — #1 on Artificial Analysis Speech Arena (ELO ~1236 vs ElevenLabs v3 at 1179) per April 2026 benchmarks. Verify pricing transparency before committing — Inworld's pricing has historically been opaque.
+**Possible future follow-ups for Inworld specifically:**
+- Wire up the `timestampType: WORD` response field for true word-level karaoke (would put Inworld on par with ElevenLabs there). The response shape isn't well-documented yet — needs an actual call to inspect before parsing.
+- Expose cloned voices: today we hard-code the 22 stock voices in a dropdown. Users with custom-cloned voices need a text fallback.
 
 **Worth skipping:**
 - PlayHT (we don't need voice library variety for note narration).
