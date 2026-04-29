@@ -355,19 +355,15 @@
   outline-offset: 2px;
 }
 
-.murmur-deck-disc-mark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) translateX(7.5px);
-  font-family: "Fraunces", Georgia, "Times New Roman", serif;
-  font-style: italic;
-  font-weight: 300;
-  font-size: 11px;
-  color: var(--background-primary);
-  line-height: 1;
-  pointer-events: none;
-  letter-spacing: 0;
+.murmur-deck-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.murmur-deck-disc svg {
+  width: 14px;
+  height: 14px;
 }
 
 .murmur-deck-skip {
@@ -412,7 +408,8 @@
   outline-offset: 1px;
 }
 
-.murmur-deck-icon-btn .svg-icon {
+.murmur-deck-icon-btn .svg-icon,
+.murmur-deck-icon-btn svg {
   width: 16px;
   height: 16px;
 }
@@ -494,14 +491,18 @@
   align-items: flex-start;
   height: 18px;
   overflow: hidden;
+  /* Reserve space for the widest possible label (e.g. "1.75×") so the button
+     doesn't change width during a roll. ~5 mono characters at 13px. */
+  min-width: 44px;
 }
 
 .murmur-deck-speed-stack {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   /* transform applied via Web Animations API in JS */
   transform: translateY(0);
+  width: 100%;
 }
 
 .murmur-deck-speed-label {
@@ -543,19 +544,8 @@
   color: var(--text-normal);
 }
 
-/* Disc rotation — only while playing. */
-@keyframes murmur-deck-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .murmur-deck-track-fill {
     transition: width 200ms linear;
-  }
-
-  .murmur-deck[data-state="playing"] .murmur-deck-disc {
-    animation: murmur-deck-spin 3s linear infinite;
   }
 }

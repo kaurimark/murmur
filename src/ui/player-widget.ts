@@ -430,10 +430,8 @@ function createDeckSkeleton(): HTMLElement {
   disc.type = "button";
   disc.className = "murmur-deck-disc";
   disc.setAttribute("aria-label", "Play");
-  const mark = document.createElement("span");
-  mark.className = "murmur-deck-disc-mark";
-  mark.textContent = "m";
-  disc.appendChild(mark);
+  setDeckIcon(disc, "play");
+  disc.dataset.icon = "play";
 
   const skipCluster = document.createElement("div");
   skipCluster.className = "murmur-deck-skip";
@@ -559,8 +557,53 @@ function createDeckIconBtn(
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = className;
-  setIcon(btn, iconName);
+  if (iconName in DECK_PIXEL_ICONS) {
+    setDeckIcon(btn, iconName as keyof typeof DECK_PIXEL_ICONS);
+  } else {
+    setIcon(btn, iconName);
+  }
   return btn;
+}
+
+// Pixel-grid icons for the tape-deck theme. Drawn with stair-stepped rects on
+// integer coordinates, rendered with shape-rendering: crispEdges so they stay
+// chunky on retina. The X uses lucide for now since the user is undecided.
+const DECK_PIXEL_ICONS = {
+  play:
+    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
+    '<rect x="2" y="1" width="2" height="8"/>' +
+    '<rect x="4" y="2" width="2" height="6"/>' +
+    '<rect x="6" y="3" width="2" height="4"/>' +
+    '<rect x="8" y="4" width="2" height="2"/>' +
+    "</svg>",
+  pause:
+    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
+    '<rect x="3" y="2" width="2" height="8"/>' +
+    '<rect x="7" y="2" width="2" height="8"/>' +
+    "</svg>",
+  "skip-back":
+    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
+    '<rect x="1" y="1" width="2" height="8"/>' +
+    '<rect x="4" y="4" width="2" height="2"/>' +
+    '<rect x="6" y="3" width="2" height="4"/>' +
+    '<rect x="8" y="2" width="2" height="6"/>' +
+    '<rect x="10" y="1" width="2" height="8"/>' +
+    "</svg>",
+  "skip-forward":
+    '<svg viewBox="0 0 12 12" fill="currentColor" shape-rendering="crispEdges">' +
+    '<rect x="1" y="1" width="2" height="8"/>' +
+    '<rect x="3" y="2" width="2" height="6"/>' +
+    '<rect x="5" y="3" width="2" height="4"/>' +
+    '<rect x="7" y="4" width="2" height="2"/>' +
+    '<rect x="10" y="1" width="2" height="8"/>' +
+    "</svg>",
+} as const;
+
+function setDeckIcon(
+  el: HTMLElement,
+  name: keyof typeof DECK_PIXEL_ICONS,
+): void {
+  el.innerHTML = DECK_PIXEL_ICONS[name];
 }
 
 function renderDeckState(outer: HTMLElement, state: WidgetState): void {
@@ -575,10 +618,13 @@ function renderDeckState(outer: HTMLElement, state: WidgetState): void {
     ".murmur-deck-disc",
   ) as HTMLButtonElement | null;
   if (disc) {
-    disc.setAttribute(
-      "aria-label",
-      state.status === "playing" ? "Pause" : "Play",
-    );
+    const isPlaying = state.status === "playing";
+    disc.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
+    const desiredIcon = isPlaying ? "pause" : "play";
+    if (disc.dataset.icon !== desiredIcon) {
+      setDeckIcon(disc, desiredIcon);
+      disc.dataset.icon = desiredIcon;
+    }
   }
 
   const speed = deck.querySelector(
@@ -681,8 +727,12 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
       { transform: `translateY(-${lineHeight}px)` },
     ],
     {
-      duration: 220,
-      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      // Slower than the design doc's 180-240ms range to feel more weighty.
+      // Easing has a slight ease-in (resistance at the start) before the
+      // longer ease-out, mimicking a wheel that doesn't move freely until
+      // the detent releases. Tape-deck mechanism, not freewheel.
+      duration: 320,
+      easing: "cubic-bezier(0.55, 0, 0.2, 1)",
       fill: "forwards",
     },
   );
