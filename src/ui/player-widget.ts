@@ -469,7 +469,7 @@ function createDeckSkeleton(): HTMLElement {
   speedStack.className = "murmur-deck-speed-stack";
   const speedLabel = document.createElement("span");
   speedLabel.className = "murmur-deck-speed-label";
-  speedLabel.textContent = "1×";
+  speedLabel.textContent = "1.00×";
   speedStack.appendChild(speedLabel);
   speedWindow.appendChild(speedStack);
   speed.appendChild(speedWindow);
@@ -680,6 +680,12 @@ function renderDeckState(outer: HTMLElement, state: WidgetState): void {
 
 const SPEED_ANIM_KEY = "_murmurSpeedAnim";
 
+function formatSpeedLabel(rate: number): string {
+  // Always two decimal places so every label is 5 chars + × — fixed width,
+  // no jitter when the wheel rolls between values.
+  return `${rate.toFixed(2)}×`;
+}
+
 function setSpeedLabel(speedBtn: HTMLButtonElement, rate: number): void {
   const stack = speedBtn.querySelector(
     ".murmur-deck-speed-stack",
@@ -689,7 +695,7 @@ function setSpeedLabel(speedBtn: HTMLButtonElement, rate: number): void {
   while (stack.firstChild) stack.removeChild(stack.firstChild);
   const label = document.createElement("span");
   label.className = "murmur-deck-speed-label";
-  label.textContent = `${rate}×`;
+  label.textContent = formatSpeedLabel(rate);
   stack.appendChild(label);
   stack.style.transform = "translateY(0)";
 }
@@ -705,7 +711,7 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
 
   const newLabel = document.createElement("span");
   newLabel.className = "murmur-deck-speed-label";
-  newLabel.textContent = `${nextRate}×`;
+  newLabel.textContent = formatSpeedLabel(nextRate);
   stack.appendChild(newLabel);
 
   // Force layout so offsetHeight is accurate, then measure.
@@ -721,18 +727,28 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
     return;
   }
 
+  // Two-phase mechanical roll:
+  //   Pre-action delay (40ms): the click "engages" the detent before motion.
+  //   Phase 1 (0 -> 70% distance over 35% of time, linear): wheel breaks
+  //     free and rolls quickly through most of the travel.
+  //   Phase 2 (70% -> 100% over remaining 65% of time, strong ease-out):
+  //     wheel decelerates and settles into the next detent.
+  // The intentional velocity discontinuity at the phase boundary reads as a
+  // mechanical "pass-through" — a real detent letting the wheel through, not
+  // a smooth easing curve.
   const anim = stack.animate(
     [
-      { transform: "translateY(0)" },
+      { transform: "translateY(0)", easing: "linear" },
+      {
+        transform: `translateY(-${lineHeight * 0.7}px)`,
+        offset: 0.35,
+        easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
       { transform: `translateY(-${lineHeight}px)` },
     ],
     {
-      // Slower than the design doc's 180-240ms range to feel more weighty.
-      // Easing has a slight ease-in (resistance at the start) before the
-      // longer ease-out, mimicking a wheel that doesn't move freely until
-      // the detent releases. Tape-deck mechanism, not freewheel.
-      duration: 320,
-      easing: "cubic-bezier(0.55, 0, 0.2, 1)",
+      duration: 360,
+      delay: 40,
       fill: "forwards",
     },
   );

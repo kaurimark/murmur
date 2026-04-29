@@ -340,7 +340,7 @@
   border-radius: 50%;
   border: none !important;
   background: var(--text-normal) !important;
-  color: var(--background-primary);
+  color: var(--background-primary) !important;
   position: relative;
   padding: 0 !important;
   cursor: pointer;
@@ -355,15 +355,20 @@
   outline-offset: 2px;
 }
 
-.murmur-deck-disc {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
+/* Force the disc icon visible against the dark disc fill, regardless of
+ * theme overrides on `button` or `svg` elements. */
 .murmur-deck-disc svg {
   width: 14px;
   height: 14px;
+  fill: var(--background-primary) !important;
+}
+
+.murmur-deck-disc svg rect {
+  fill: var(--background-primary) !important;
+}
+
+.murmur-deck-icon-btn svg rect {
+  fill: currentColor !important;
 }
 
 .murmur-deck-skip {
@@ -491,9 +496,9 @@
   align-items: flex-start;
   height: 18px;
   overflow: hidden;
-  /* Reserve space for the widest possible label (e.g. "1.75×") so the button
-     doesn't change width during a roll. ~5 mono characters at 13px. */
-  min-width: 44px;
+  /* Labels are formatted as `0.75×` / `1.00×` / `1.25×` etc. — always 5
+     mono chars + ×, so the natural label width is fixed. No min-width
+     needed; the button hugs the content. */
 }
 
 .murmur-deck-speed-stack {
