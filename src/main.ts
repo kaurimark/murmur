@@ -2,6 +2,7 @@ import { MarkdownView, Notice, Plugin, TFile } from "obsidian";
 import type { EditorView } from "@codemirror/view";
 import { ElevenLabsProvider } from "./provider/elevenlabs";
 import { OpenAIProvider } from "./provider/openai";
+import { CartesiaProvider } from "./provider/cartesia";
 import { AudioCache, CachedTTSProvider } from "./provider/cache";
 import type { TTSProvider } from "./provider/types";
 import { markdownToSegments } from "./segmenter";
@@ -203,26 +204,44 @@ export default class MurmurPlugin extends Plugin {
   }
 
   private activeProviderConfig() {
-    return this.settings.provider === "openai"
-      ? this.settings.openai
-      : this.settings.elevenlabs;
+    switch (this.settings.provider) {
+      case "openai":
+        return this.settings.openai;
+      case "cartesia":
+        return this.settings.cartesia;
+      default:
+        return this.settings.elevenlabs;
+    }
+  }
+
+  private providerLabel(): string {
+    switch (this.settings.provider) {
+      case "openai":
+        return "OpenAI";
+      case "cartesia":
+        return "Cartesia";
+      default:
+        return "ElevenLabs";
+    }
   }
 
   private buildProvider(): TTSProvider | null {
     const cfg = this.activeProviderConfig();
     if (!cfg.apiKey) return null;
-    if (this.settings.provider === "openai") {
-      return new OpenAIProvider(cfg.apiKey);
+    switch (this.settings.provider) {
+      case "openai":
+        return new OpenAIProvider(cfg.apiKey);
+      case "cartesia":
+        return new CartesiaProvider(cfg.apiKey);
+      default:
+        return new ElevenLabsProvider(cfg.apiKey);
     }
-    return new ElevenLabsProvider(cfg.apiKey);
   }
 
   async previewVoice(): Promise<void> {
     const provider = this.buildProvider();
     if (!provider) {
-      const name =
-        this.settings.provider === "openai" ? "OpenAI" : "ElevenLabs";
-      new Notice(`murmur: enter your ${name} API key first.`);
+      new Notice(`murmur: enter your ${this.providerLabel()} API key first.`);
       return;
     }
     const cfg = this.activeProviderConfig();
@@ -261,8 +280,7 @@ export default class MurmurPlugin extends Plugin {
   private readText(text: string, notePath: string | null) {
     const providerConfig = this.activeProviderConfig();
     if (!providerConfig.apiKey) {
-      const name = this.settings.provider === "openai" ? "OpenAI" : "ElevenLabs";
-      new Notice(`murmur: enter your ${name} API key in settings.`);
+      new Notice(`murmur: enter your ${this.providerLabel()} API key in settings.`);
       return;
     }
 

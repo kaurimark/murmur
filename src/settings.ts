@@ -1,27 +1,27 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type MurmurPlugin from "./main";
 import { OPENAI_MODELS, OPENAI_VOICES } from "./provider/openai";
+import { CARTESIA_MODELS } from "./provider/cartesia";
 
 export type WidgetTheme = "inline-chip" | "tape-deck";
 
-export type ProviderId = "elevenlabs" | "openai";
+export type ProviderId = "elevenlabs" | "openai" | "cartesia";
 
-export interface ElevenLabsConfig {
+export interface ProviderConfig {
   apiKey: string;
   voiceId: string;
   modelId: string;
 }
 
-export interface OpenAIConfig {
-  apiKey: string;
-  voiceId: string;
-  modelId: string;
-}
+export type ElevenLabsConfig = ProviderConfig;
+export type OpenAIConfig = ProviderConfig;
+export type CartesiaConfig = ProviderConfig;
 
 export interface MurmurSettings {
   provider: ProviderId;
   elevenlabs: ElevenLabsConfig;
   openai: OpenAIConfig;
+  cartesia: CartesiaConfig;
   cacheSizeMB: number;
   alwaysShowWidget: boolean;
   widgetTheme: WidgetTheme;
@@ -38,6 +38,11 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
     apiKey: "",
     voiceId: "alloy",
     modelId: "tts-1",
+  },
+  cartesia: {
+    apiKey: "",
+    voiceId: "",
+    modelId: "sonic-2",
   },
   cacheSizeMB: 500,
   alwaysShowWidget: false,
@@ -91,6 +96,10 @@ export function mergeWithDefaults(
       ...DEFAULT_SETTINGS.openai,
       ...(partial.openai ?? {}),
     },
+    cartesia: {
+      ...DEFAULT_SETTINGS.cartesia,
+      ...(partial.cartesia ?? {}),
+    },
   };
 }
 
@@ -106,11 +115,12 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("TTS provider")
       .setDesc(
-        "ElevenLabs gives precise word-level karaoke highlighting but costs more. OpenAI is significantly cheaper; karaoke is approximated from audio duration.",
+        "ElevenLabs gives precise word-level karaoke highlighting but costs more. Cartesia is similar quality and often cheaper. OpenAI is the cheapest. Karaoke is approximated from audio duration on Cartesia and OpenAI.",
       )
       .addDropdown((dropdown) =>
         dropdown
           .addOption("elevenlabs", "ElevenLabs")
+          .addOption("cartesia", "Cartesia")
           .addOption("openai", "OpenAI")
           .setValue(this.plugin.settings.provider)
           .onChange(async (value) => {
@@ -122,6 +132,8 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     if (this.plugin.settings.provider === "elevenlabs") {
       this.renderElevenLabs();
+    } else if (this.plugin.settings.provider === "cartesia") {
+      this.renderCartesia();
     } else {
       this.renderOpenAI();
     }
@@ -264,6 +276,50 @@ export class MurmurSettingTab extends PluginSettingTab {
       .setName("Model")
       .addDropdown((dropdown) => {
         for (const m of OPENAI_MODELS) {
+          dropdown.addOption(m.id, m.label);
+        }
+        dropdown.setValue(cfg.modelId).onChange(async (value) => {
+          cfg.modelId = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    this.renderPreviewButton();
+  }
+
+  private renderCartesia(): void {
+    const { containerEl } = this;
+    const cfg = this.plugin.settings.cartesia;
+
+    new Setting(containerEl)
+      .setName("Cartesia API key")
+      .setDesc("Stored as plain text in your vault. Get one at cartesia.ai.")
+      .addText((text) =>
+        text
+          .setPlaceholder("sk_car_...")
+          .setValue(cfg.apiKey)
+          .onChange(async (value) => {
+            cfg.apiKey = value.trim();
+            await this.plugin.saveSettings();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Voice ID")
+      .setDesc(
+        "Cartesia voice ID (UUID). Browse the voice library at cartesia.ai and copy the ID.",
+      )
+      .addText((text) =>
+        text.setValue(cfg.voiceId).onChange(async (value) => {
+          cfg.voiceId = value.trim();
+          await this.plugin.saveSettings();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Model")
+      .addDropdown((dropdown) => {
+        for (const m of CARTESIA_MODELS) {
           dropdown.addOption(m.id, m.label);
         }
         dropdown.setValue(cfg.modelId).onChange(async (value) => {
