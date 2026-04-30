@@ -1,5 +1,4 @@
-import { MarkdownView, Notice, Plugin, TFile, setIcon } from "obsidian";
-import type { ObsidianProtocolData } from "obsidian";
+import { MarkdownView, Notice, Plugin, TFile } from "obsidian";
 import type { EditorView } from "@codemirror/view";
 import { ElevenLabsProvider } from "./provider/elevenlabs";
 import { OpenAIProvider } from "./provider/openai";
@@ -8,9 +7,6 @@ import { FishAudioProvider } from "./provider/fishaudio";
 import { InworldProvider } from "./provider/inworld";
 import { AudioCache, CachedTTSProvider } from "./provider/cache";
 import type { TTSProvider } from "./provider/types";
-import { AgentVoiceQueue } from "./agent-voice/queue";
-
-const MAX_AGENT_TEXT_LENGTH = 500;
 import { markdownToSegments } from "./segmenter";
 import type { Segment } from "./segmenter";
 import { SegmentPlayer } from "./audio/player";
@@ -48,8 +44,6 @@ export default class MurmurPlugin extends Plugin {
   private lastPlaybackRate = 1;
   private lastHighlight: { from: number; to: number } | null = null;
   private floatingWidget: HTMLElement | null = null;
-  private agentVoice: AgentVoiceQueue | null = null;
-  private agentVoiceRibbonEl: HTMLElement | null = null;
   // Set true at the very start of onunload. Prevents late-firing event
   // handlers (e.g. active-leaf-change triggered by settings-tab removal)
   // from racing past unload and re-creating widgets we just swept.
@@ -112,36 +106,6 @@ export default class MurmurPlugin extends Plugin {
       this.readSmart(),
     );
 
-    this.agentVoice = new AgentVoiceQueue({
-      getProvider: () => {
-        const base = this.buildProvider();
-        if (!base) return null;
-        return new CachedTTSProvider(base, this.cache, this.settings.provider);
-      },
-      getVoice: () => {
-        const cfg = this.activeProviderConfig();
-        return { voiceId: cfg.voiceId, modelId: cfg.modelId };
-      },
-      isMuted: () => this.settings.agentVoiceMuted,
-      notify: (msg) => new Notice(msg),
-    });
-
-    this.registerObsidianProtocolHandler("murmur-speak", (params) =>
-      this.handleAgentSpeak(params),
-    );
-
-    this.agentVoiceRibbonEl = this.addRibbonIcon(
-      this.settings.agentVoiceMuted ? "volume-x" : "volume-2",
-      this.agentVoiceRibbonLabel(),
-      () => void this.toggleAgentVoiceMute(),
-    );
-
-    this.addCommand({
-      id: "toggle-agent-voice-mute",
-      name: "Toggle agent voice mute",
-      callback: () => void this.toggleAgentVoiceMute(),
-    });
-
     this.addCommand({
       id: "read-current-note",
       name: "Read note (or selection)",
@@ -187,9 +151,6 @@ export default class MurmurPlugin extends Plugin {
 
     try {
       setWidgetActions(null);
-      this.agentVoice?.stop();
-      this.agentVoice = null;
-      this.agentVoiceRibbonEl = null;
       this.unmountFloating();
       this.stopPlayback();
     } catch (err) {
@@ -446,48 +407,6 @@ export default class MurmurPlugin extends Plugin {
       if (cm) views.push(cm);
     }
     return views;
-  }
-
-  private handleAgentSpeak(params: ObsidianProtocolData): void {
-    const text = (params.text ?? "").trim();
-    if (!text) {
-      new Notice("agent voice: missing text param");
-      return;
-    }
-    if (text.length > MAX_AGENT_TEXT_LENGTH) {
-      new Notice(
-        `agent voice: text exceeds ${MAX_AGENT_TEXT_LENGTH} chars (got ${text.length}); dropped`,
-      );
-      return;
-    }
-    this.agentVoice?.enqueue(text);
-  }
-
-  private async toggleAgentVoiceMute(): Promise<void> {
-    this.settings.agentVoiceMuted = !this.settings.agentVoiceMuted;
-    await this.saveSettings();
-    if (this.settings.agentVoiceMuted) {
-      this.agentVoice?.stop();
-    }
-    this.refreshAgentVoiceRibbon();
-    new Notice(
-      this.settings.agentVoiceMuted
-        ? "agent voice: muted"
-        : "agent voice: unmuted",
-    );
-  }
-
-  private refreshAgentVoiceRibbon(): void {
-    if (!this.agentVoiceRibbonEl) return;
-    const muted = this.settings.agentVoiceMuted;
-    setIcon(this.agentVoiceRibbonEl, muted ? "volume-x" : "volume-2");
-    this.agentVoiceRibbonEl.setAttribute("aria-label", this.agentVoiceRibbonLabel());
-  }
-
-  private agentVoiceRibbonLabel(): string {
-    return this.settings.agentVoiceMuted
-      ? "agent voice: muted (click to unmute)"
-      : "agent voice: live (click to mute)";
   }
 
   private readSmart() {

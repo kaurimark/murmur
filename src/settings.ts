@@ -45,7 +45,6 @@ export interface MurmurSettings {
   widgetTheme: WidgetTheme;
   widgetPlacement: WidgetPlacement;
   floatingPosition: FloatingPosition;
-  agentVoiceMuted: boolean;
 }
 
 export const DEFAULT_SETTINGS: MurmurSettings = {
@@ -82,7 +81,6 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   widgetTheme: "tape-deck",
   widgetPlacement: "inline",
   floatingPosition: { x: 24, y: 24 },
-  agentVoiceMuted: false,
 };
 
 /**
