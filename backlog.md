@@ -229,3 +229,23 @@ The floating widget mode shipped, but a few polish details were noted as open qu
 - **Edge-snap behavior.** Drag is currently pixel-precise. Snap-to-corner / snap-to-edge would feel more intentional. Threshold-based: if drag-end is within ~24px of a viewport edge, snap to it.
 - **Drag handle area.** Currently the entire widget body is draggable (minus buttons/scrubber). If users find that they're starting drags on accidental clicks, add a small dedicated drag-handle strip (e.g. 8–12px on the left edge).
 - **Multi-window support — explicitly out of scope.** Decision recorded: one floating widget per Obsidian process, attached to the main window. If users ask for it later, it'd be per-window mounts driven by `app.workspace.on("window-open")`.
+
+---
+
+## 17. Playback queue — multi-note listening sessions
+
+**Idea.** A user-facing queue: pick several notes (or a folder, or a tag subset) and have Murmur play them back-to-back, like a playlist. Today the plugin reads one note at a time — finishing means the user manually triggers the next, which breaks flow when listening while walking / commuting / doing dishes.
+
+**Entry points to consider.**
+- Right-click folder → "Read all notes in folder."
+- Multi-select in the file explorer → "Add to read queue."
+- Tag query: "Read all notes with tag #review" — morning-briefing use case.
+- A small collapsible queue widget with reorder / remove controls.
+
+**Things to settle.**
+- Cross-note pause and an optional spoken "Next: Title" announcement.
+- Persistence across plugin reload / Obsidian restart — probably yes for the morning-briefing case; store in `data.json`.
+- Floating widget shows queue position ("Note 2 of 5"); skip-forward gains a meaningful "next note" semantic in addition to "next segment."
+- Failure handling: if note 3 of 7 errors mid-stream, advance with a Notice rather than halting the queue.
+
+**Why backlog.** The single-note read path needs to be solid first; queueing multiplies failure modes on top of any read-aloud bug. Worth designing once v1 has shipped and the read-one-note flow is proven reliable in real use.
