@@ -206,8 +206,8 @@ export class MurmurSettingTab extends PluginSettingTab {
       )
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("inline-chip", "Inline chip (default)")
-          .addOption("tape-deck", "Tape-deck")
+          .addOption("tape-deck", "Tape-deck (default)")
+          .addOption("inline-chip", "Inline chip")
           .setValue(this.plugin.settings.widgetTheme)
           .onChange(async (value) => {
             this.plugin.settings.widgetTheme = value as WidgetTheme;
