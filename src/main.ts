@@ -27,7 +27,6 @@ import {
   WidgetState,
 } from "./ui/player-widget";
 import {
-  DEFAULT_SETTINGS,
   MurmurSettings,
   MurmurSettingTab,
   mergeWithDefaults,
@@ -102,7 +101,7 @@ export default class MurmurPlugin extends Plugin {
       this.app.workspace.on("active-leaf-change", () => this.refreshWidget()),
     );
 
-    this.addRibbonIcon("audio-lines", "murmur: read note aloud", () =>
+    this.addRibbonIcon("audio-lines", "Read note aloud", () =>
       this.readSmart(),
     );
 
@@ -130,7 +129,7 @@ export default class MurmurPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => this.refreshWidget());
   }
 
-  async onunload() {
+  onunload() {
     // Mark unloaded FIRST. Any late-firing event handlers that slip past
     // Obsidian's listener cleanup (e.g. active-leaf-change triggered by the
     // settings-tab removal that happens during plugin disable) will see this
@@ -267,10 +266,10 @@ export default class MurmurPlugin extends Plugin {
     }
 
     const dom = createFloatingWidget(state);
-    dom.style.position = "fixed";
-    dom.style.zIndex = "1000";
-    dom.style.left = "0px";
-    dom.style.top = "0px";
+    // position: fixed, z-index, and the var(--murmur-x/y) consumers live in
+    // styles.css on .murmur-floating. We drive the dynamic position via CSS
+    // variables — `--`-prefixed property keys are the only ones the
+    // no-static-styles eslint rule allows in setCssProps.
     document.body.appendChild(dom);
 
     // Measure after mount so we can clamp the saved position to the current
@@ -282,8 +281,7 @@ export default class MurmurPlugin extends Plugin {
       rect.width,
       rect.height,
     );
-    dom.style.left = `${x}px`;
-    dom.style.top = `${y}px`;
+    dom.setCssProps({ "--murmur-x": `${x}px`, "--murmur-y": `${y}px` });
 
     this.attachFloatingDrag(dom);
     this.floatingWidget = dom;
@@ -317,8 +315,7 @@ export default class MurmurPlugin extends Plugin {
     // listeners on the same element both fire — `stopPropagation` only blocks
     // bubbling to ancestors, not sibling listeners.
     const inner =
-      (outer.querySelector(".murmur-chip, .murmur-deck") as HTMLElement | null) ??
-      outer;
+      outer.querySelector<HTMLElement>(".murmur-chip, .murmur-deck") ?? outer;
 
     inner.addEventListener("mousedown", (e) => {
       // Buttons + scrubber call stopPropagation on their own mousedowns, so
@@ -347,8 +344,10 @@ export default class MurmurPlugin extends Plugin {
         );
         lastX = next.x;
         lastY = next.y;
-        outer.style.left = `${lastX}px`;
-        outer.style.top = `${lastY}px`;
+        outer.setCssProps({
+          "--murmur-x": `${lastX}px`,
+          "--murmur-y": `${lastY}px`,
+        });
       };
 
       const onUp = () => {
@@ -412,7 +411,7 @@ export default class MurmurPlugin extends Plugin {
   private readSmart() {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) {
-      new Notice("murmur: open a markdown note first.");
+      new Notice("Open a Markdown note first.");
       return;
     }
     const selection = view.editor.getSelection();
@@ -470,7 +469,7 @@ export default class MurmurPlugin extends Plugin {
   async previewVoice(): Promise<void> {
     const provider = this.buildProvider();
     if (!provider) {
-      new Notice(`murmur: enter your ${this.providerLabel()} API key first.`);
+      new Notice(`Enter your ${this.providerLabel()} API key first.`);
       return;
     }
     const cfg = this.activeProviderConfig();
@@ -485,7 +484,7 @@ export default class MurmurPlugin extends Plugin {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      new Notice(`murmur: ${msg}`);
+      new Notice(msg);
       return;
     }
     const blob = new Blob([result.audio], { type: "audio/mpeg" });
@@ -502,20 +501,20 @@ export default class MurmurPlugin extends Plugin {
     } catch (err) {
       URL.revokeObjectURL(url);
       const msg = err instanceof Error ? err.message : String(err);
-      new Notice(`murmur: preview playback failed — ${msg}`);
+      new Notice(`Preview playback failed — ${msg}`);
     }
   }
 
   private readText(text: string, notePath: string | null) {
     const providerConfig = this.activeProviderConfig();
     if (!providerConfig.apiKey) {
-      new Notice(`murmur: enter your ${this.providerLabel()} API key in settings.`);
+      new Notice(`Enter your ${this.providerLabel()} API key in settings.`);
       return;
     }
 
     const segments = markdownToSegments(text);
     if (segments.length === 0) {
-      new Notice("murmur: nothing to read.");
+      new Notice("Nothing to read.");
       return;
     }
 
@@ -535,7 +534,7 @@ export default class MurmurPlugin extends Plugin {
       providerConfig.voiceId,
       providerConfig.modelId,
       {
-        onError: (msg) => new Notice(`murmur: ${msg}`),
+        onError: (msg) => new Notice(msg),
         onProgress: (segment, alignment, timeSec) =>
           this.updateHighlight(segment, alignment, timeSec),
         onTick: (cur, dur) => emitWidgetTick(cur, dur),

@@ -207,15 +207,15 @@ function applyTickToDom(
   currentTimeSec: number,
   durationSec: number,
 ): void {
-  const fill = dom.querySelector(
+  const fill = dom.querySelector<HTMLElement>(
     ".murmur-chip-track-fill, .murmur-deck-track-fill",
-  ) as HTMLElement | null;
-  const cur = dom.querySelector(
+  );
+  const cur = dom.querySelector<HTMLElement>(
     ".murmur-chip-time-current, .murmur-deck-time-current",
-  ) as HTMLElement | null;
-  const dur = dom.querySelector(
+  );
+  const dur = dom.querySelector<HTMLElement>(
     ".murmur-chip-time-duration, .murmur-deck-time-duration",
-  ) as HTMLElement | null;
+  );
   if (fill) {
     const pct =
       durationSec > 0
@@ -388,7 +388,7 @@ function createIconButton(iconName: string, className: string): HTMLButtonElemen
 }
 
 function renderChipState(outer: HTMLElement, state: WidgetState): void {
-  const chip = outer.querySelector(".murmur-chip") as HTMLElement | null;
+  const chip = outer.querySelector<HTMLElement>(".murmur-chip");
   if (!chip) return;
 
   const isOther = !!state.otherNoteName;
@@ -402,9 +402,9 @@ function renderChipState(outer: HTMLElement, state: WidgetState): void {
   chip.classList.toggle("is-paused", isPaused && !isOther);
   chip.classList.toggle("is-loading", isLoading && !isOther);
 
-  const idleDuration = chip.querySelector(
+  const idleDuration = chip.querySelector<HTMLElement>(
     ".murmur-chip-idle-duration",
-  ) as HTMLElement | null;
+  );
   if (idleDuration) {
     idleDuration.textContent =
       state.idleEstimateMin >= 1
@@ -412,9 +412,9 @@ function renderChipState(outer: HTMLElement, state: WidgetState): void {
         : "· < 1 min";
   }
 
-  const primary = chip.querySelector(
+  const primary = chip.querySelector<HTMLButtonElement>(
     ".murmur-chip-primary",
-  ) as HTMLButtonElement | null;
+  );
   if (primary) {
     if (isLoading) {
       while (primary.firstChild) primary.removeChild(primary.firstChild);
@@ -423,20 +423,20 @@ function renderChipState(outer: HTMLElement, state: WidgetState): void {
     }
   }
 
-  const speed = chip.querySelector(
+  const speed = chip.querySelector<HTMLButtonElement>(
     ".murmur-chip-speed",
-  ) as HTMLButtonElement | null;
+  );
   if (speed) {
     speed.textContent = `${state.playbackRate}×`;
     speed.dataset.rate = String(state.playbackRate);
   }
 
-  const skipBack = chip.querySelector(
+  const skipBack = chip.querySelector<HTMLButtonElement>(
     ".murmur-chip-skip-back",
-  ) as HTMLButtonElement | null;
-  const skipFwd = chip.querySelector(
+  );
+  const skipFwd = chip.querySelector<HTMLButtonElement>(
     ".murmur-chip-skip-forward",
-  ) as HTMLButtonElement | null;
+  );
   if (skipBack) {
     skipBack.disabled =
       !isPlayingState || isLoading || state.segmentIndex <= 0;
@@ -448,9 +448,9 @@ function renderChipState(outer: HTMLElement, state: WidgetState): void {
       state.segmentIndex >= state.totalSegments - 1;
   }
 
-  const otherLabel = chip.querySelector(
+  const otherLabel = chip.querySelector<HTMLElement>(
     ".murmur-chip-other-label",
-  ) as HTMLElement | null;
+  );
   if (otherLabel) {
     otherLabel.textContent = isOther
       ? `Listening to ${state.otherNoteName}`
@@ -675,16 +675,16 @@ function setDeckIcon(
 }
 
 function renderDeckState(outer: HTMLElement, state: WidgetState): void {
-  const deck = outer.querySelector(".murmur-deck") as HTMLElement | null;
+  const deck = outer.querySelector<HTMLElement>(".murmur-deck");
   if (!deck) return;
 
   const isOther = !!state.otherNoteName;
   const stateName = isOther ? "other" : state.status;
   deck.dataset.state = stateName;
 
-  const disc = deck.querySelector(
+  const disc = deck.querySelector<HTMLButtonElement>(
     ".murmur-deck-disc",
-  ) as HTMLButtonElement | null;
+  );
   if (disc) {
     const isPlaying = state.status === "playing";
     disc.setAttribute("aria-label", isPlaying ? "Pause" : "Play");
@@ -695,9 +695,9 @@ function renderDeckState(outer: HTMLElement, state: WidgetState): void {
     }
   }
 
-  const speed = deck.querySelector(
+  const speed = deck.querySelector<HTMLButtonElement>(
     ".murmur-deck-speed",
-  ) as HTMLButtonElement | null;
+  );
   if (speed) {
     const prevRate = parseFloat(speed.dataset.rate ?? "");
     const nextRate = state.playbackRate;
@@ -709,12 +709,12 @@ function renderDeckState(outer: HTMLElement, state: WidgetState): void {
     speed.dataset.rate = String(nextRate);
   }
 
-  const skipBack = deck.querySelector(
+  const skipBack = deck.querySelector<HTMLButtonElement>(
     ".murmur-deck-skip-back",
-  ) as HTMLButtonElement | null;
-  const skipFwd = deck.querySelector(
+  );
+  const skipFwd = deck.querySelector<HTMLButtonElement>(
     ".murmur-deck-skip-forward",
-  ) as HTMLButtonElement | null;
+  );
   const isPlayingState =
     state.status === "playing" ||
     state.status === "paused" ||
@@ -734,9 +734,9 @@ function renderDeckState(outer: HTMLElement, state: WidgetState): void {
       state.segmentIndex >= state.totalSegments - 1;
   }
 
-  const otherLabel = deck.querySelector(
+  const otherLabel = deck.querySelector<HTMLElement>(
     ".murmur-deck-other-label",
-  ) as HTMLElement | null;
+  );
   if (otherLabel) {
     otherLabel.textContent = isOther
       ? `↗ Listening to ${state.otherNoteName}`
@@ -755,9 +755,9 @@ function formatSpeedLabel(rate: number): string {
 }
 
 function setSpeedLabel(speedBtn: HTMLButtonElement, rate: number): void {
-  const stack = speedBtn.querySelector(
+  const stack = speedBtn.querySelector<HTMLElement>(
     ".murmur-deck-speed-stack",
-  ) as HTMLElement | null;
+  );
   if (!stack) return;
   finalizeSpeedAnim(speedBtn);
   while (stack.firstChild) stack.removeChild(stack.firstChild);
@@ -765,13 +765,13 @@ function setSpeedLabel(speedBtn: HTMLButtonElement, rate: number): void {
   label.className = "murmur-deck-speed-label";
   label.textContent = formatSpeedLabel(rate);
   stack.appendChild(label);
-  stack.style.transform = "translateY(0)";
+  stack.setCssProps({ "--murmur-stack-y": "0" });
 }
 
 function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
-  const stack = speedBtn.querySelector(
+  const stack = speedBtn.querySelector<HTMLElement>(
     ".murmur-deck-speed-stack",
-  ) as HTMLElement | null;
+  );
   if (!stack) return;
 
   // If a roll is in flight, snap it to its end (current = previous target).
@@ -827,9 +827,9 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
 }
 
 function finalizeSpeedAnim(speedBtn: HTMLButtonElement): void {
-  const stack = speedBtn.querySelector(
+  const stack = speedBtn.querySelector<HTMLElement>(
     ".murmur-deck-speed-stack",
-  ) as HTMLElement | null;
+  );
   if (!stack) return;
 
   // Cancel the animation to release `fill: forwards` — without this, the
@@ -849,5 +849,5 @@ function finalizeSpeedAnim(speedBtn: HTMLButtonElement): void {
   for (let i = 0; i < labels.length - 1; i++) {
     labels[i].remove();
   }
-  stack.style.transform = "translateY(0)";
+  stack.setCssProps({ "--murmur-stack-y": "0" });
 }

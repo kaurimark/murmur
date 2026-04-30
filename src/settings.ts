@@ -415,7 +415,7 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Fish Audio API key")
       .setDesc(
-        "Stored as plain text in your vault. Get one at fish.audio. Important: API usage is billed pay-as-you-go from a SEPARATE wallet — your Plus/Pro subscription credits cover the web UI only. Fund the API wallet at fish.audio/go-api or you'll get HTTP 402 errors.",
+        "Stored as plain text in your vault. Get one at fish.audio. Important: API usage is billed pay-as-you-go from a separate wallet — your Plus/Pro subscription credits cover the web UI only. Fund the API wallet at fish.audio/go-api or you'll get HTTP 402 errors.",
       )
       .addText((text) =>
         text

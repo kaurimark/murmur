@@ -117,10 +117,14 @@ export class AudioCache {
     for (const hash of Object.keys(this.index.entries)) {
       try {
         await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.mp3`));
-      } catch {}
+      } catch {
+        // File already missing or unreadable — proceed with index cleanup.
+      }
       try {
         await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.json`));
-      } catch {}
+      } catch {
+        // Alignment file is optional; missing is fine.
+      }
     }
     this.index = { totalBytes: 0, entries: {} };
     await this.saveIndex();
@@ -143,10 +147,14 @@ export class AudioCache {
       if (this.index.totalBytes <= this.maxBytes) break;
       try {
         await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.mp3`));
-      } catch {}
+      } catch {
+        // File already missing or unreadable — proceed with index cleanup.
+      }
       try {
         await adapter.remove(normalizePath(`${this.cacheDir}/${hash}.json`));
-      } catch {}
+      } catch {
+        // Alignment file is optional; missing is fine.
+      }
       delete this.index.entries[hash];
       this.index.totalBytes = Math.max(0, this.index.totalBytes - entry.bytes);
     }

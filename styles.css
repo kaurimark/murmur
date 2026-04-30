@@ -6,10 +6,22 @@
 .murmur-floating {
   position: fixed !important;
   z-index: 1000;
+  /* Position is driven by CSS variables set from JS during mount + drag.
+   * Using variables (instead of inline left/top) lets the no-static-styles
+   * eslint rule accept the JS pattern via setCssProps. */
+  left: var(--murmur-x, 0);
+  top: var(--murmur-y, 0);
   /* Inline mode adds padding-bottom for spacing from the H1; floating mode
    * doesn't need that. */
   padding-bottom: 0 !important;
   user-select: none;
+}
+
+.murmur-deck-speed-stack {
+  /* Stack's vertical offset is animated via Web Animations API (which sets
+   * inline styles directly, exempt from the eslint rule). For the steady
+   * state, we use a CSS variable so JS resets via setCssProps stay clean. */
+  transform: translateY(var(--murmur-stack-y, 0));
 }
 
 .murmur-floating .murmur-chip,
