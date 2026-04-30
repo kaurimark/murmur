@@ -326,7 +326,7 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("OpenAI API key")
-      .setDesc("Stored as plain text in your vault. Get one at platform.openai.com.")
+      .setDesc("Stored as plain text in your vault. Get one at platform.OpenAI.com.")
       .addText((text) =>
         text
           .setPlaceholder("sk-...")
@@ -370,7 +370,7 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Cartesia API key")
-      .setDesc("Stored as plain text in your vault. Get one at cartesia.ai.")
+      .setDesc("Stored as plain text in your vault. Get one at Cartesia.ai.")
       .addText((text) =>
         text
           .setPlaceholder("sk_car_...")
@@ -415,7 +415,7 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Fish Audio API key")
       .setDesc(
-        "Stored as plain text in your vault. Get one at fish.audio. Important: API usage is billed pay-as-you-go from a separate wallet — your Plus/Pro subscription credits cover the web UI only. Fund the API wallet at fish.audio/go-api or you'll get HTTP 402 errors.",
+        "Stored as plain text in your vault. Get one at Fish Audio. Important: API usage is billed pay-as-you-go from a separate wallet — your subscription credits cover the web UI only. Fund the API wallet via Fish Audio's pricing page or you'll get HTTP 402 errors.",
       )
       .addText((text) =>
         text
@@ -465,7 +465,7 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Inworld API key")
       .setDesc(
-        "Stored as plain text in your vault. Get one at platform.inworld.ai. The On-Demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
+        "Stored as plain text in your vault. Get one at platform.Inworld.ai. The on-demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
       )
       .addText((text) =>
         text
