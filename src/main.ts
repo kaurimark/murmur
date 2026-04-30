@@ -46,14 +46,18 @@ export default class MurmurPlugin extends Plugin {
   private floatingWidget: HTMLElement | null = null;
 
   async onload() {
-    // Defensive: sweep any orphaned floating widgets from prior plugin
-    // lifecycles (esbuild hot reload, partial unloads, dev iteration). Each
-    // module reload creates a fresh `actions` variable; widgets created by
-    // the old module reference its now-null `actions` and become dead — drag
-    // and click stop working. Cleaning at load time guarantees the user only
-    // sees the live widget.
+    // Defensive: sweep any orphaned widget DOM from prior plugin lifecycles
+    // (esbuild hot reload, partial unloads, dev iteration, or plugin disable
+    // that didn't fully clean up). We sweep `.murmur-widget-outer` — the base
+    // class on every widget instance — rather than `.murmur-floating`,
+    // because inline widgets rendered via CodeMirror decorations carry the
+    // base class but not the floating class, and CM extension teardown
+    // doesn't always force a re-render. Each module reload also creates a
+    // fresh `actions` variable; widgets from the old module reference its
+    // now-null `actions` and become dead. Cleaning at load time guarantees
+    // the user only sees the live widget.
     for (const el of Array.from(
-      document.querySelectorAll(".murmur-floating"),
+      document.querySelectorAll(".murmur-widget-outer"),
     )) {
       el.remove();
     }
@@ -125,10 +129,15 @@ export default class MurmurPlugin extends Plugin {
   async onunload() {
     setWidgetActions(null);
     this.unmountFloating();
-    // Defensive: clear any stale floating widget DOM that may have escaped
-    // unmountFloating (e.g. partial unload, dev reload races).
+    // Defensive: sweep ALL widget DOM, not just floating instances. Inline
+    // widgets rendered via CodeMirror decorations carry `.murmur-widget-outer`
+    // but not `.murmur-floating` — and CM extension teardown doesn't always
+    // force a re-render that drops them, so without this sweep the inline
+    // widget DOM is left stranded in the editor when the plugin disables.
+    // (The styles.css also unloads, so any stranded widget loses its flexbox
+    // layout and the children stack vertically — that's the visible symptom.)
     for (const el of Array.from(
-      document.querySelectorAll(".murmur-floating"),
+      document.querySelectorAll(".murmur-widget-outer"),
     )) {
       el.remove();
     }
