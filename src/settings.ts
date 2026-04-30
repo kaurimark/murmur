@@ -268,9 +268,21 @@ export class MurmurSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     const cfg = this.plugin.settings.elevenlabs;
 
+    // Affiliate disclosure: the link below is a referral link. Plain text
+    // marker `(referral)` is shown to users at the point of click. See the
+    // README's "Affiliate disclosure" section for the full disclosure.
+    const apiKeyDesc = document.createDocumentFragment();
+    apiKeyDesc.append("Stored as plain text in your vault. Get one at ");
+    const apiKeyLink = apiKeyDesc.appendChild(document.createElement("a"));
+    apiKeyLink.href = "https://try.elevenlabs.io/0dwmkurqlz4a";
+    apiKeyLink.textContent = "elevenlabs.io";
+    apiKeyLink.target = "_blank";
+    apiKeyLink.rel = "noopener noreferrer";
+    apiKeyDesc.append(" (referral).");
+
     new Setting(containerEl)
       .setName("ElevenLabs API key")
-      .setDesc("Stored as plain text in your vault. Get one at elevenlabs.io.")
+      .setDesc(apiKeyDesc)
       .addText((text) =>
         text
           .setPlaceholder("sk_...")

@@ -14,17 +14,23 @@ Built because Speechify mangles markdown — tables, code, lists, callouts — a
 - Pauses around headings, between paragraphs, between list items
 - Strips Obsidian-specific syntax (wikilinks, embeds, callouts, highlights, comments, task checkboxes) so it sounds like prose, not code
 
+## Affiliate disclosure
+
+Some links in this README and in Murmur's settings tab are referral links — if you sign up through them I receive a small commission, at no extra cost to you. Currently this applies only to **ElevenLabs**; the other providers (Inworld, Fish Audio, Cartesia, OpenAI) are linked through plain non-referral URLs.
+
+Referral links are marked `(referral)` everywhere they appear. You can sign up directly at any provider's website without going through my links — whether you do or not has no effect on the plugin or your account.
+
 ## Providers
 
 Pick whichever fits your budget and quality bar. All keys are stored locally in your vault — Murmur never proxies through a server.
 
 | Provider | Strengths | Karaoke precision | Approx. cost |
 | --- | --- | --- | --- |
-| **ElevenLabs** | Highest karaoke precision (true word-level timestamps from the API). Excellent voices. | Per-character | ~$0.05–0.10 / 1K chars |
-| **Inworld** | Currently top of the Artificial Analysis Speech Arena. OpenAI-level pricing. | Synthesized from duration | ~$35 / 1M chars |
-| **Fish Audio** | Fast, lots of community voices. | Synthesized from duration | Pay-as-you-go |
-| **Cartesia** | Low latency, expressive voices. | Synthesized from duration | Pay-as-you-go |
-| **OpenAI** | Cheapest, six built-in voices. | Synthesized from duration | ~$15 / 1M chars |
+| **[ElevenLabs](https://try.elevenlabs.io/0dwmkurqlz4a)** *(referral)* | Highest karaoke precision (true word-level timestamps from the API). Excellent voices. | Per-character | ~$0.05–0.10 / 1K chars |
+| **[Inworld](https://platform.inworld.ai/)** | Currently top of the Artificial Analysis Speech Arena. OpenAI-level pricing. | Synthesized from duration | ~$35 / 1M chars |
+| **[Fish Audio](https://fish.audio/)** | Fast, lots of community voices. | Synthesized from duration | Pay-as-you-go |
+| **[Cartesia](https://cartesia.ai/)** | Low latency, expressive voices. | Synthesized from duration | Pay-as-you-go |
+| **[OpenAI](https://platform.openai.com/)** | Cheapest, six built-in voices. | Synthesized from duration | ~$15 / 1M chars |
 
 Karaoke highlighting works on every provider; ElevenLabs is the only one that returns true per-character alignment, so on the others Murmur synthesizes a uniform alignment from audio duration (still very usable, just slightly less precise on long words).
 
