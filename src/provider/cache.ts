@@ -16,6 +16,19 @@ interface IndexFile {
   entries: Record<string, IndexEntry>;
 }
 
+function isIndexFile(value: unknown): value is IndexFile {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.totalBytes !== "number") return false;
+  if (!candidate.entries || typeof candidate.entries !== "object") return false;
+
+  return Object.values(candidate.entries).every((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const item = entry as Record<string, unknown>;
+    return typeof item.bytes === "number" && typeof item.lastUsed === "number";
+  });
+}
+
 export class AudioCache {
   private cacheDir: string;
   private indexPath: string;
@@ -44,7 +57,9 @@ export class AudioCache {
     if (await adapter.exists(this.indexPath)) {
       try {
         const text = await adapter.read(this.indexPath);
-        this.index = JSON.parse(text);
+        const parsed: unknown = JSON.parse(text);
+        if (!isIndexFile(parsed)) throw new Error("Invalid cache index");
+        this.index = parsed;
       } catch {
         this.index = { totalBytes: 0, entries: {} };
       }

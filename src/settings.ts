@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, SecretComponent, Setting } from "obsidian";
 import type MurmurPlugin from "./main";
 import { OPENAI_MODELS, OPENAI_VOICES } from "./provider/openai";
 import { CARTESIA_MODELS } from "./provider/cartesia";
@@ -17,7 +17,7 @@ export type ProviderId =
   | "fishaudio";
 
 export interface ProviderConfig {
-  apiKey: string;
+  apiKeySecretId: string;
   voiceId: string;
   modelId: string;
 }
@@ -50,27 +50,27 @@ export interface MurmurSettings {
 export const DEFAULT_SETTINGS: MurmurSettings = {
   provider: "elevenlabs",
   elevenlabs: {
-    apiKey: "",
+    apiKeySecretId: "",
     voiceId: "21m00Tcm4TlvDq8ikWAM",
     modelId: "eleven_flash_v2_5",
   },
   inworld: {
-    apiKey: "",
+    apiKeySecretId: "",
     voiceId: "Ashley",
     modelId: "inworld-tts-1.5-max",
   },
   openai: {
-    apiKey: "",
+    apiKeySecretId: "",
     voiceId: "alloy",
     modelId: "tts-1",
   },
   cartesia: {
-    apiKey: "",
+    apiKeySecretId: "",
     voiceId: "",
     modelId: "sonic-3",
   },
   fishaudio: {
-    apiKey: "",
+    apiKeySecretId: "",
     voiceId: "",
     modelId: "s2-pro",
   },
@@ -83,9 +83,82 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
   floatingPosition: { x: 24, y: 24 },
 };
 
+const PROVIDER_IDS: ProviderId[] = [
+  "elevenlabs",
+  "inworld",
+  "openai",
+  "cartesia",
+  "fishaudio",
+];
+
+export type LegacyApiKeys = Partial<Record<ProviderId, string>>;
+
+interface SecretStore {
+  getSecret(id: string): string | null;
+  setSecret(id: string, value: string): void;
+}
+
+/** Extract plaintext keys before migrateSettings removes them from data.json. */
+export function extractLegacyApiKeys(
+  raw: Record<string, unknown> | null | undefined,
+): LegacyApiKeys {
+  if (!raw || typeof raw !== "object") return {};
+
+  const keys: LegacyApiKeys = {};
+  for (const providerId of PROVIDER_IDS) {
+    const config = raw[providerId];
+    if (!config || typeof config !== "object") continue;
+    const apiKey = (config as Record<string, unknown>).apiKey;
+    if (typeof apiKey === "string" && apiKey.trim()) {
+      keys[providerId] = apiKey.trim();
+    }
+  }
+
+  if (!keys.elevenlabs && typeof raw.apiKey === "string" && raw.apiKey.trim()) {
+    keys.elevenlabs = raw.apiKey.trim();
+  }
+
+  return keys;
+}
+
+/** Import legacy plaintext keys without overwriting secrets owned elsewhere. */
+export function importLegacyApiKeys(
+  settings: MurmurSettings,
+  secretStorage: SecretStore,
+  keys: LegacyApiKeys,
+): void {
+  for (const [providerId, apiKey] of Object.entries(keys) as [
+    ProviderId,
+    string,
+  ][]) {
+    const config = settings[providerId];
+    if (
+      config.apiKeySecretId &&
+      secretStorage.getSecret(config.apiKeySecretId) !== null
+    ) {
+      continue;
+    }
+
+    const baseId = `murmur-${providerId}-api-key`;
+    let secretId = baseId;
+    let suffix = 2;
+    while (true) {
+      const existing = secretStorage.getSecret(secretId);
+      if (existing === null) {
+        secretStorage.setSecret(secretId, apiKey);
+        break;
+      }
+      if (existing === apiKey) break;
+      secretId = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+    config.apiKeySecretId = secretId;
+  }
+}
+
 /**
- * Migrate settings from the v0.1 flat shape (apiKey/voiceId/modelId at the
- * top level, ElevenLabs assumed) to the multi-provider nested shape.
+ * Migrate settings from older shapes and scrub plaintext API keys. Key values
+ * are imported into Obsidian SecretStorage separately during plugin load.
  */
 export function migrateSettings(
   raw: Record<string, unknown> | null | undefined,
@@ -93,12 +166,9 @@ export function migrateSettings(
   if (!raw || typeof raw !== "object") return {};
   const data = { ...raw } as Record<string, unknown>;
 
-  if (
-    typeof data.apiKey === "string" &&
-    !("elevenlabs" in data)
-  ) {
+  if (typeof data.apiKey === "string" && !("elevenlabs" in data)) {
     data.elevenlabs = {
-      apiKey: data.apiKey,
+      apiKeySecretId: "",
       voiceId:
         typeof data.voiceId === "string"
           ? data.voiceId
@@ -108,12 +178,21 @@ export function migrateSettings(
           ? data.modelId
           : DEFAULT_SETTINGS.elevenlabs.modelId,
     };
-    delete data.apiKey;
-    delete data.voiceId;
-    delete data.modelId;
   }
 
-  return data as Partial<MurmurSettings>;
+  delete data.apiKey;
+  delete data.voiceId;
+  delete data.modelId;
+
+  for (const providerId of PROVIDER_IDS) {
+    const config = data[providerId];
+    if (!config || typeof config !== "object") continue;
+    const cleanConfig = { ...(config as Record<string, unknown>) };
+    delete cleanConfig.apiKey;
+    data[providerId] = cleanConfig;
+  }
+
+  return data;
 }
 
 export function mergeWithDefaults(
@@ -271,9 +350,9 @@ export class MurmurSettingTab extends PluginSettingTab {
     // Affiliate disclosure: the link below is a referral link. Plain text
     // marker `(referral)` is shown to users at the point of click. See the
     // README's "Affiliate disclosure" section for the full disclosure.
-    const apiKeyDesc = document.createDocumentFragment();
-    apiKeyDesc.append("Stored as plain text in your vault. Get one at ");
-    const apiKeyLink = apiKeyDesc.appendChild(document.createElement("a"));
+    const apiKeyDesc = createFragment();
+    apiKeyDesc.append("Stored securely by Obsidian. Get one at ");
+    const apiKeyLink = apiKeyDesc.appendChild(createEl("a"));
     apiKeyLink.href = "https://try.elevenlabs.io/0dwmkurqlz4a";
     apiKeyLink.textContent = "elevenlabs.io";
     apiKeyLink.target = "_blank";
@@ -283,12 +362,11 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("ElevenLabs API key")
       .setDesc(apiKeyDesc)
-      .addText((text) =>
-        text
-          .setPlaceholder("sk_...")
-          .setValue(cfg.apiKey)
+      .addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(cfg.apiKeySecretId)
           .onChange(async (value) => {
-            cfg.apiKey = value.trim();
+            cfg.apiKeySecretId = value;
             await this.plugin.saveSettings();
           }),
       );
@@ -326,13 +404,12 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("OpenAI API key")
-      .setDesc("Stored as plain text in your vault. Get one at platform.OpenAI.com.")
-      .addText((text) =>
-        text
-          .setPlaceholder("sk-...")
-          .setValue(cfg.apiKey)
+      .setDesc("Stored securely by Obsidian. Get one at platform.OpenAI.com.")
+      .addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(cfg.apiKeySecretId)
           .onChange(async (value) => {
-            cfg.apiKey = value.trim();
+            cfg.apiKeySecretId = value;
             await this.plugin.saveSettings();
           }),
       );
@@ -370,13 +447,12 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Cartesia API key")
-      .setDesc("Stored as plain text in your vault. Get one at Cartesia.ai.")
-      .addText((text) =>
-        text
-          .setPlaceholder("sk_car_...")
-          .setValue(cfg.apiKey)
+      .setDesc("Stored securely by Obsidian. Get one at Cartesia.ai.")
+      .addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(cfg.apiKeySecretId)
           .onChange(async (value) => {
-            cfg.apiKey = value.trim();
+            cfg.apiKeySecretId = value;
             await this.plugin.saveSettings();
           }),
       );
@@ -415,14 +491,13 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Fish Audio API key")
       .setDesc(
-        "Stored as plain text in your vault. Get one at Fish Audio. Important: API usage is billed pay-as-you-go from a separate wallet — your subscription credits cover the web UI only. Fund the API wallet via Fish Audio's pricing page or you'll get HTTP 402 errors.",
+        "Stored securely by Obsidian. Get one at Fish Audio. Important: API usage is billed pay-as-you-go from a separate wallet — your subscription credits cover the web UI only. Fund the API wallet via Fish Audio's pricing page or you'll get HTTP 402 errors.",
       )
-      .addText((text) =>
-        text
-          .setPlaceholder("...")
-          .setValue(cfg.apiKey)
+      .addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(cfg.apiKeySecretId)
           .onChange(async (value) => {
-            cfg.apiKey = value.trim();
+            cfg.apiKeySecretId = value;
             await this.plugin.saveSettings();
           }),
       );
@@ -465,14 +540,13 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Inworld API key")
       .setDesc(
-        "Stored as plain text in your vault. Get one at platform.Inworld.ai. The on-demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
+        "Stored securely by Obsidian. Get one at platform.Inworld.ai. The on-demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
       )
-      .addText((text) =>
-        text
-          .setPlaceholder("...")
-          .setValue(cfg.apiKey)
+      .addComponent((el) =>
+        new SecretComponent(this.app, el)
+          .setValue(cfg.apiKeySecretId)
           .onChange(async (value) => {
-            cfg.apiKey = value.trim();
+            cfg.apiKeySecretId = value;
             await this.plugin.saveSettings();
           }),
       );

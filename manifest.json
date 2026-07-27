@@ -1,8 +1,8 @@
 {
   "id": "murmur",
   "name": "Murmur",
-  "version": "0.1.0",
-  "minAppVersion": "1.5.0",
+  "version": "0.2.0",
+  "minAppVersion": "1.11.4",
   "description": "Read your notes aloud with karaoke-style highlighting. Multiple TTS providers supported.",
   "author": "kaurimark",
   "authorUrl": "https://github.com/kaurimark",

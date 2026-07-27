@@ -22,7 +22,7 @@ Referral links are marked `(referral)` everywhere they appear. You can sign up d
 
 ## Providers
 
-Pick whichever fits your budget and quality bar. All keys are stored locally in your vault — Murmur never proxies through a server.
+Pick whichever fits your budget and quality bar. API keys are stored locally using Obsidian's SecretStorage — Murmur never proxies through a server.
 
 | Provider | Strengths | Karaoke precision | Approx. cost |
 | --- | --- | --- | --- |
@@ -68,7 +68,7 @@ The widget appears at the top of the file (after frontmatter, if any) with playb
 
 ## Privacy
 
-Murmur sends your note text — or just the selected portion — to whichever TTS provider you've configured, over HTTPS, in order to generate audio. **Your API key is stored as plain text** in `<vault>/.obsidian/plugins/murmur/data.json`. If your vault is shared or synced, treat that file as sensitive.
+Murmur sends your note text — or just the selected portion — to whichever TTS provider you've configured, over HTTPS, in order to generate audio. API keys are managed through Obsidian's SecretStorage; Murmur's `data.json` stores only the selected secret's name, not its value.
 
 No analytics, no telemetry, no other network calls. The only outbound traffic is to the TTS provider you've selected.
 

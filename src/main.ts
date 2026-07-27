@@ -29,6 +29,8 @@ import {
 import {
   MurmurSettings,
   MurmurSettingTab,
+  extractLegacyApiKeys,
+  importLegacyApiKeys,
   mergeWithDefaults,
   migrateSettings,
 } from "./settings";
@@ -59,11 +61,7 @@ export default class MurmurPlugin extends Plugin {
     // fresh `actions` variable; widgets from the old module reference its
     // now-null `actions` and become dead. Cleaning at load time guarantees
     // the user only sees the live widget.
-    for (const el of Array.from(
-      document.querySelectorAll(".murmur-widget-outer"),
-    )) {
-      el.remove();
-    }
+    this.sweepWidgetDom();
 
     await this.loadSettings();
 
@@ -139,11 +137,7 @@ export default class MurmurPlugin extends Plugin {
     // Sweep DOM. Best-effort — we wrap in try/catch so a sweep failure
     // doesn't prevent the rest of teardown.
     try {
-      for (const el of Array.from(
-        document.querySelectorAll(".murmur-widget-outer"),
-      )) {
-        el.remove();
-      }
+      this.sweepWidgetDom();
     } catch (err) {
       console.error("[Murmur] DOM sweep threw:", err);
     }
@@ -162,11 +156,36 @@ export default class MurmurPlugin extends Plugin {
       | Record<string, unknown>
       | null
       | undefined;
+    const legacyApiKeys = extractLegacyApiKeys(raw);
     this.settings = mergeWithDefaults(migrateSettings(raw));
+
+    if (Object.keys(legacyApiKeys).length > 0) {
+      importLegacyApiKeys(
+        this.settings,
+        this.app.secretStorage,
+        legacyApiKeys,
+      );
+      // migrateSettings removed the plaintext values. Persist only after all
+      // keys have been imported successfully so a failed import cannot lose a
+      // user's credentials.
+      await this.saveSettings();
+    }
   }
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  private sweepWidgetDom(): void {
+    const docs = new Set<Document>([activeDocument]);
+    for (const view of this.getAllEditorViews()) docs.add(view.dom.doc);
+    for (const doc of docs) {
+      for (const el of Array.from(
+        doc.querySelectorAll(".murmur-widget-outer"),
+      )) {
+        el.remove();
+      }
+    }
   }
 
   refreshWidget(): void {
@@ -242,7 +261,9 @@ export default class MurmurPlugin extends Plugin {
       this.unmountFloating();
       return;
     }
-    if (!this.floatingWidget) {
+    const targetDoc = this.getFloatingTargetDocument();
+    if (!this.floatingWidget || this.floatingWidget.doc !== targetDoc) {
+      this.unmountFloating();
       this.mountFloating(state);
       return;
     }
@@ -254,23 +275,26 @@ export default class MurmurPlugin extends Plugin {
     }
   }
 
+  private getFloatingTargetDocument(): Document {
+    return this.getActiveEditorView()?.dom.doc ?? activeDocument;
+  }
+
   private mountFloating(state: WidgetState): void {
+    const doc = this.getFloatingTargetDocument();
     // Defensive: sweep any orphaned floating widgets from prior plugin
     // lifecycles. If the previous instance's onunload didn't fully clean up
     // (plugin reload during dev, etc.), we'd otherwise stack multiple
     // floating widgets on top of each other.
-    for (const el of Array.from(
-      document.querySelectorAll(".murmur-floating"),
-    )) {
+    for (const el of Array.from(doc.querySelectorAll(".murmur-floating"))) {
       el.remove();
     }
 
-    const dom = createFloatingWidget(state);
+    const dom = createFloatingWidget(state, doc);
     // position: fixed, z-index, and the var(--murmur-x/y) consumers live in
     // styles.css on .murmur-floating. We drive the dynamic position via CSS
     // variables — `--`-prefixed property keys are the only ones the
     // no-static-styles eslint rule allows in setCssProps.
-    document.body.appendChild(dom);
+    doc.body.appendChild(dom);
 
     // Measure after mount so we can clamp the saved position to the current
     // viewport (handles the case where the user undocks a laptop and the
@@ -280,6 +304,7 @@ export default class MurmurPlugin extends Plugin {
       this.settings.floatingPosition,
       rect.width,
       rect.height,
+      dom.win,
     );
     dom.setCssProps({ "--murmur-x": `${x}px`, "--murmur-y": `${y}px` });
 
@@ -297,9 +322,10 @@ export default class MurmurPlugin extends Plugin {
     pos: { x: number; y: number },
     width: number,
     height: number,
+    win: Window,
   ): { x: number; y: number } {
-    const maxX = Math.max(0, window.innerWidth - width);
-    const maxY = Math.max(0, window.innerHeight - height);
+    const maxX = Math.max(0, win.innerWidth - width);
+    const maxY = Math.max(0, win.innerHeight - height);
     return {
       x: Math.max(0, Math.min(maxX, pos.x)),
       y: Math.max(0, Math.min(maxY, pos.y)),
@@ -307,6 +333,8 @@ export default class MurmurPlugin extends Plugin {
   }
 
   private attachFloatingDrag(outer: HTMLElement): void {
+    const doc = outer.doc;
+    const win = outer.win;
     // The chip/deck already has a `mousedown → stopPropagation` listener so
     // editor cursor placement doesn't fire when clicking the widget in inline
     // mode. That listener kills the bubble before it reaches `outer`, so a
@@ -331,7 +359,7 @@ export default class MurmurPlugin extends Plugin {
       let lastX = rect.left;
       let lastY = rect.top;
 
-      document.body.classList.add("murmur-floating-dragging");
+      doc.body.classList.add("murmur-floating-dragging");
 
       const onMove = (ev: MouseEvent) => {
         const next = this.clampFloatingPosition(
@@ -341,6 +369,7 @@ export default class MurmurPlugin extends Plugin {
           },
           rect.width,
           rect.height,
+          win,
         );
         lastX = next.x;
         lastY = next.y;
@@ -351,15 +380,15 @@ export default class MurmurPlugin extends Plugin {
       };
 
       const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        document.body.classList.remove("murmur-floating-dragging");
+        doc.removeEventListener("mousemove", onMove);
+        doc.removeEventListener("mouseup", onUp);
+        doc.body.classList.remove("murmur-floating-dragging");
         this.settings.floatingPosition = { x: lastX, y: lastY };
         void this.saveSettings();
       };
 
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
+      doc.addEventListener("mousemove", onMove);
+      doc.addEventListener("mouseup", onUp);
     });
   }
 
@@ -434,6 +463,12 @@ export default class MurmurPlugin extends Plugin {
     }
   }
 
+  private activeApiKey(): string | null {
+    const secretId = this.activeProviderConfig().apiKeySecretId;
+    if (!secretId) return null;
+    return this.app.secretStorage.getSecret(secretId);
+  }
+
   private providerLabel(): string {
     switch (this.settings.provider) {
       case "openai":
@@ -450,19 +485,19 @@ export default class MurmurPlugin extends Plugin {
   }
 
   private buildProvider(): TTSProvider | null {
-    const cfg = this.activeProviderConfig();
-    if (!cfg.apiKey) return null;
+    const apiKey = this.activeApiKey();
+    if (!apiKey) return null;
     switch (this.settings.provider) {
       case "openai":
-        return new OpenAIProvider(cfg.apiKey);
+        return new OpenAIProvider(apiKey);
       case "cartesia":
-        return new CartesiaProvider(cfg.apiKey);
+        return new CartesiaProvider(apiKey);
       case "fishaudio":
-        return new FishAudioProvider(cfg.apiKey);
+        return new FishAudioProvider(apiKey);
       case "inworld":
-        return new InworldProvider(cfg.apiKey);
+        return new InworldProvider(apiKey);
       default:
-        return new ElevenLabsProvider(cfg.apiKey);
+        return new ElevenLabsProvider(apiKey);
     }
   }
 
@@ -507,7 +542,7 @@ export default class MurmurPlugin extends Plugin {
 
   private readText(text: string, notePath: string | null) {
     const providerConfig = this.activeProviderConfig();
-    if (!providerConfig.apiKey) {
+    if (!this.activeApiKey()) {
       new Notice(`Enter your ${this.providerLabel()} API key in settings.`);
       return;
     }

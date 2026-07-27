@@ -119,11 +119,12 @@ class PlayerWidget extends WidgetType {
     );
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
+    const doc = view.dom.doc;
     const dom =
       this.state.theme === "tape-deck"
-        ? createDeckSkeleton()
-        : createChipSkeleton();
+        ? createDeckSkeleton(doc)
+        : createChipSkeleton(doc);
     renderForTheme(dom, this.state);
     attachTickListener(dom);
     applyTickToDom(dom, lastTick.currentTimeSec, lastTick.durationSec);
@@ -157,9 +158,14 @@ function renderForTheme(outer: HTMLElement, state: WidgetState): void {
 // outside the CodeMirror editor (in a fixed-position container).
 // =============================================================================
 
-export function createFloatingWidget(state: WidgetState): HTMLElement {
+export function createFloatingWidget(
+  state: WidgetState,
+  doc: Document,
+): HTMLElement {
   const dom =
-    state.theme === "tape-deck" ? createDeckSkeleton() : createChipSkeleton();
+    state.theme === "tape-deck"
+      ? createDeckSkeleton(doc)
+      : createChipSkeleton(doc);
   dom.classList.add("murmur-floating");
   renderForTheme(dom, state);
   attachTickListener(dom);
@@ -227,77 +233,93 @@ function applyTickToDom(
   if (dur) dur.textContent = formatTime(durationSec);
 }
 
-function createChipSkeleton(): HTMLElement {
-  const outer = document.createElement("div");
+function makeElement<K extends keyof HTMLElementTagNameMap>(
+  doc: Document,
+  tag: K,
+): HTMLElementTagNameMap[K] {
+  const win = doc.win as Window & {
+    createFragment(): DocumentFragment;
+  };
+  return win.createFragment().createEl(tag);
+}
+
+function createChipSkeleton(doc: Document): HTMLElement {
+  const outer = makeElement(doc, "div");
   outer.className = "murmur-widget-outer";
 
-  const chip = document.createElement("div");
+  const chip = makeElement(doc, "div");
   chip.className = "murmur-chip";
 
-  const idleFace = document.createElement("div");
+  const idleFace = makeElement(doc, "div");
   idleFace.className = "murmur-chip-face murmur-chip-face-idle";
-  const idleIcon = document.createElement("span");
+  const idleIcon = makeElement(doc, "span");
   idleIcon.className = "murmur-chip-idle-icon";
   setIcon(idleIcon, "play");
-  const idleLabel = document.createElement("span");
+  const idleLabel = makeElement(doc, "span");
   idleLabel.className = "murmur-chip-idle-label";
   idleLabel.textContent = "Read aloud";
-  const idleDuration = document.createElement("span");
+  const idleDuration = makeElement(doc, "span");
   idleDuration.className = "murmur-chip-idle-duration";
   idleFace.append(idleIcon, idleLabel, idleDuration);
 
-  const playingFace = document.createElement("div");
+  const playingFace = makeElement(doc, "div");
   playingFace.className = "murmur-chip-face murmur-chip-face-playing";
 
-  const primary = document.createElement("button");
+  const primary = makeElement(doc, "button");
   primary.type = "button";
   primary.className = "murmur-chip-primary";
   setIcon(primary, "pause");
 
-  const skipCluster = document.createElement("div");
+  const skipCluster = makeElement(doc, "div");
   skipCluster.className = "murmur-chip-skip-cluster";
   const skipBack = createIconButton(
+    doc,
     "skip-back",
     "murmur-chip-icon-btn murmur-chip-skip-back",
   );
   const skipFwd = createIconButton(
+    doc,
     "skip-forward",
     "murmur-chip-icon-btn murmur-chip-skip-forward",
   );
   skipCluster.append(skipBack, skipFwd);
 
-  const timeGroup = document.createElement("div");
+  const timeGroup = makeElement(doc, "div");
   timeGroup.className = "murmur-chip-time-group";
-  const timeCurrent = document.createElement("span");
+  const timeCurrent = makeElement(doc, "span");
   timeCurrent.className = "murmur-chip-time-current";
   timeCurrent.textContent = "0:00";
-  const track = document.createElement("div");
+  const track = makeElement(doc, "div");
   track.className = "murmur-chip-track";
-  const fill = document.createElement("div");
+  const fill = makeElement(doc, "div");
   fill.className = "murmur-chip-track-fill";
   track.appendChild(fill);
-  const timeDuration = document.createElement("span");
+  const timeDuration = makeElement(doc, "span");
   timeDuration.className = "murmur-chip-time-duration";
   timeDuration.textContent = "0:00";
   timeGroup.append(timeCurrent, track, timeDuration);
 
-  const speed = document.createElement("button");
+  const speed = makeElement(doc, "button");
   speed.type = "button";
   speed.className = "murmur-chip-speed";
   speed.textContent = "1×";
 
-  const close = createIconButton("x", "murmur-chip-icon-btn murmur-chip-close");
+  const close = createIconButton(
+    doc,
+    "x",
+    "murmur-chip-icon-btn murmur-chip-close",
+  );
 
   playingFace.append(primary, skipCluster, timeGroup, speed, close);
 
-  const otherFace = document.createElement("div");
+  const otherFace = makeElement(doc, "div");
   otherFace.className = "murmur-chip-face murmur-chip-face-other";
-  const otherArrow = document.createElement("span");
+  const otherArrow = makeElement(doc, "span");
   otherArrow.className = "murmur-chip-other-arrow";
   otherArrow.textContent = "↗";
-  const otherLabel = document.createElement("span");
+  const otherLabel = makeElement(doc, "span");
   otherLabel.className = "murmur-chip-other-label";
-  const otherStop = document.createElement("button");
+  const otherStop = makeElement(doc, "button");
   otherStop.type = "button";
   otherStop.className = "murmur-chip-icon-btn murmur-chip-other-stop";
   otherStop.setAttribute("aria-label", "Stop narration");
@@ -379,8 +401,12 @@ function createChipSkeleton(): HTMLElement {
   return outer;
 }
 
-function createIconButton(iconName: string, className: string): HTMLButtonElement {
-  const btn = document.createElement("button");
+function createIconButton(
+  doc: Document,
+  iconName: string,
+  className: string,
+): HTMLButtonElement {
+  const btn = makeElement(doc, "button");
   btn.type = "button";
   btn.className = className;
   setIcon(btn, iconName);
@@ -469,55 +495,57 @@ function formatTime(seconds: number): string {
 // Tape-deck theme
 // =============================================================================
 
-function createDeckSkeleton(): HTMLElement {
-  const outer = document.createElement("div");
+function createDeckSkeleton(doc: Document): HTMLElement {
+  const outer = makeElement(doc, "div");
   outer.className = "murmur-widget-outer";
 
-  const deck = document.createElement("div");
+  const deck = makeElement(doc, "div");
   deck.className = "murmur-deck";
 
-  const disc = document.createElement("button");
+  const disc = makeElement(doc, "button");
   disc.type = "button";
   disc.className = "murmur-deck-disc";
   disc.setAttribute("aria-label", "Play");
   setDeckIcon(disc, "play");
   disc.dataset.icon = "play";
 
-  const skipCluster = document.createElement("div");
+  const skipCluster = makeElement(doc, "div");
   skipCluster.className = "murmur-deck-skip";
   const skipBack = createDeckIconBtn(
+    doc,
     "skip-back",
     "murmur-deck-icon-btn murmur-deck-skip-back",
   );
   const skipFwd = createDeckIconBtn(
+    doc,
     "skip-forward",
     "murmur-deck-icon-btn murmur-deck-skip-forward",
   );
   skipCluster.append(skipBack, skipFwd);
 
-  const timeBlock = document.createElement("div");
+  const timeBlock = makeElement(doc, "div");
   timeBlock.className = "murmur-deck-time";
-  const timeCurrent = document.createElement("span");
+  const timeCurrent = makeElement(doc, "span");
   timeCurrent.className = "murmur-deck-time-current";
   timeCurrent.textContent = "0:00";
-  const track = document.createElement("div");
+  const track = makeElement(doc, "div");
   track.className = "murmur-deck-track";
-  const fill = document.createElement("div");
+  const fill = makeElement(doc, "div");
   fill.className = "murmur-deck-track-fill";
   track.appendChild(fill);
-  const timeDuration = document.createElement("span");
+  const timeDuration = makeElement(doc, "span");
   timeDuration.className = "murmur-deck-time-duration";
   timeDuration.textContent = "0:00";
   timeBlock.append(timeCurrent, track, timeDuration);
 
-  const speed = document.createElement("button");
+  const speed = makeElement(doc, "button");
   speed.type = "button";
   speed.className = "murmur-deck-speed";
-  const speedWindow = document.createElement("span");
+  const speedWindow = makeElement(doc, "span");
   speedWindow.className = "murmur-deck-speed-window";
-  const speedStack = document.createElement("span");
+  const speedStack = makeElement(doc, "span");
   speedStack.className = "murmur-deck-speed-stack";
-  const speedLabel = document.createElement("span");
+  const speedLabel = makeElement(doc, "span");
   speedLabel.className = "murmur-deck-speed-label";
   speedLabel.textContent = "1.00×";
   speedStack.appendChild(speedLabel);
@@ -525,11 +553,12 @@ function createDeckSkeleton(): HTMLElement {
   speed.appendChild(speedWindow);
 
   const close = createDeckIconBtn(
+    doc,
     "x",
     "murmur-deck-icon-btn murmur-deck-close",
   );
 
-  const otherLabel = document.createElement("span");
+  const otherLabel = makeElement(doc, "span");
   otherLabel.className = "murmur-deck-other-label";
 
   // otherLabel goes before close so when both are visible (other-note state),
@@ -603,10 +632,11 @@ function createDeckSkeleton(): HTMLElement {
 }
 
 function createDeckIconBtn(
+  doc: Document,
   iconName: string,
   className: string,
 ): HTMLButtonElement {
-  const btn = document.createElement("button");
+  const btn = makeElement(doc, "button");
   btn.type = "button";
   btn.className = className;
   if (iconName in DECK_PIXEL_ICONS) {
@@ -659,12 +689,12 @@ function setDeckIcon(
   name: keyof typeof DECK_PIXEL_ICONS,
 ): void {
   el.empty();
-  const svg = document.createElementNS(SVG_NS, "svg");
+  const svg = el.doc.createElementNS(SVG_NS, "svg");
   svg.setAttribute("viewBox", "0 0 12 12");
   svg.setAttribute("fill", "currentColor");
   svg.setAttribute("shape-rendering", "crispEdges");
   for (const [x, y, w, h] of DECK_PIXEL_ICONS[name]) {
-    const rect = document.createElementNS(SVG_NS, "rect");
+    const rect = el.doc.createElementNS(SVG_NS, "rect");
     rect.setAttribute("x", String(x));
     rect.setAttribute("y", String(y));
     rect.setAttribute("width", String(w));
@@ -761,7 +791,7 @@ function setSpeedLabel(speedBtn: HTMLButtonElement, rate: number): void {
   if (!stack) return;
   finalizeSpeedAnim(speedBtn);
   while (stack.firstChild) stack.removeChild(stack.firstChild);
-  const label = document.createElement("span");
+  const label = makeElement(stack.doc, "span");
   label.className = "murmur-deck-speed-label";
   label.textContent = formatSpeedLabel(rate);
   stack.appendChild(label);
@@ -777,7 +807,7 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
   // If a roll is in flight, snap it to its end (current = previous target).
   finalizeSpeedAnim(speedBtn);
 
-  const newLabel = document.createElement("span");
+  const newLabel = makeElement(stack.doc, "span");
   newLabel.className = "murmur-deck-speed-label";
   newLabel.textContent = formatSpeedLabel(nextRate);
   stack.appendChild(newLabel);
@@ -786,10 +816,9 @@ function rollSpeedWheel(speedBtn: HTMLButtonElement, nextRate: number): void {
   const lineHeight = newLabel.offsetHeight || 18;
 
   // Respect prefers-reduced-motion: skip the animation, jump to the new label.
-  const reducedMotion =
-    typeof window !== "undefined" &&
-    window.matchMedia &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = speedBtn.win.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
   if (reducedMotion) {
     setSpeedLabel(speedBtn, nextRate);
     return;

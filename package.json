@@ -1,11 +1,13 @@
 {
   "name": "murmur",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read your notes aloud with karaoke-style highlighting.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "lint": "eslint src --max-warnings=0",
+    "test": "node --test tests/*.test.mjs"
   },
   "author": "kaurimark",
   "license": "MIT",
@@ -15,8 +17,8 @@
     "@types/node": "^20.0.0",
     "@typescript-eslint/parser": "^8.59.1",
     "builtin-modules": "^3.3.0",
-    "esbuild": "^0.20.0",
-    "eslint-plugin-obsidianmd": "^0.2.9",
+    "esbuild": "^0.28.1",
+    "eslint-plugin-obsidianmd": "^0.4.1",
     "obsidian": "latest",
     "tslib": "^2.6.0",
     "typescript": "^5.3.0",

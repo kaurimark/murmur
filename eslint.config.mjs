@@ -14,6 +14,10 @@ export default [
       },
     },
     rules: {
+      // Declarative settings are an optional Obsidian 1.13+ API that is still
+      // limited to insider builds. Murmur keeps its 1.11-compatible imperative
+      // tab until 1.13 becomes the stable minimum.
+      "obsidianmd/settings-tab/prefer-setting-definitions": "off",
       // Sentence case rule needs to know our domain-specific proper nouns
       // and acronyms. Without this, brand names like "ElevenLabs" get flagged
       // as needing lowercase ("Elevenlabs"), which would actively misrepresent
@@ -41,11 +45,6 @@ export default [
             "MB",  // Megabyte — used in cache size setting
           ],
           ignoreRegex: [
-            // API key format placeholders shown in setPlaceholder calls.
-            // These mimic the literal prefix of real keys (sk_..., sk-...,
-            // sk_car_...) so users recognize what to paste; capitalizing
-            // them would break the visual cue.
-            "^sk[-_]",
             // Hex/UUID example value in a Fish Audio voice-ID placeholder.
             "^e\\.g\\. [a-f0-9]+$",
           ],
