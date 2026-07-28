@@ -3,12 +3,11 @@ import type { TTSGenerateOptions, TTSProvider, TTSResult } from "./types";
 
 const INWORLD_BASE = "https://api.inworld.ai/tts/v1";
 
-// Verified against Inworld's API reference (April 2026): the 1.0-series
-// (`inworld-tts-1`, `inworld-tts-1-max`) is being phased out in favour of the
-// 1.5 series, so we don't expose the legacy IDs.
+// Model IDs currently exposed by Murmur. Keep these stable until newer API
+// models are tested end-to-end.
 export const INWORLD_MODELS = [
-  { id: "inworld-tts-1.5-max", label: "TTS 1.5 Max (top quality, recommended)" },
-  { id: "inworld-tts-1.5-mini", label: "TTS 1.5 Mini (fastest, cheapest)" },
+  { id: "inworld-tts-1.5-max", label: "TTS 1.5 Max" },
+  { id: "inworld-tts-1.5-mini", label: "TTS 1.5 Mini" },
 ] as const;
 
 // The 22 named voices Inworld ships out of the box. Cloned voices have their

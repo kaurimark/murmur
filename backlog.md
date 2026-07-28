@@ -1,6 +1,38 @@
 # Backlog
 
-Out-of-scope-for-v1 ideas worth keeping. Not committed work — pulled in only when v1 is stable.
+Ideas worth keeping. Not committed work — pull one item through Vinny's Algo at a time.
+
+## Operating method — Vinny's Algo
+
+Every Murmur feature follows the same loop:
+
+1. Have the idea.
+2. Discuss and criticize it with an agent.
+3. Write the plan and spec.
+4. Scope the work into small goals.
+5. Execute one goal.
+6. Repeat.
+
+A backlog entry is not permission to jump straight into implementation. Conversation and a small, explicit plan come first.
+
+## Near-term priorities
+
+### Playback correctness surfaced by the outward-facing review
+
+- Carry a selection's document offset into segmentation so selection playback highlights the selected source range instead of matching offsets near the start of the note.
+- Either make the progress track seek across the whole note or render it as a current-section track; the current whole-note appearance and current-section behavior disagree.
+- Add focused regression tests for both behaviors before advertising selection highlighting or whole-note seeking.
+
+### Mobile support
+
+Make Murmur genuinely usable in Obsidian Mobile rather than merely removing `isDesktopOnly`.
+
+- Start with a focused compatibility spike: identify every desktop assumption in playback, caching, SecretStorage, editor integration, and widget mounting on both iOS and Android.
+- Define the smallest useful mobile flow through conversation and a spec before coding. At minimum, whole-note and selection playback must work with touch-friendly controls.
+- Treat mobile layout and lifecycle behavior as product work: safe areas, app backgrounding, interruptions, audio session behavior, and constrained screen space are part of the feature.
+- Keep `isDesktopOnly: true` until the mobile build has been exercised on real Obsidian Mobile installs and the supported flow passes end-to-end.
+
+**Done when:** Murmur can be installed from Obsidian's Community Plugins browser on mobile and its declared mobile flow works reliably on tested iOS and Android devices.
 
 ---
 

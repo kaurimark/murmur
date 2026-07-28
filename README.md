@@ -1,94 +1,79 @@
 # Murmur
 
-A read-aloud plugin for Obsidian. Sends your note text to a TTS provider of your choice for high-quality text-to-speech, with karaoke-style highlighting that follows the spoken word in your editor.
+**Read any Obsidian note aloud—with highlighting that follows the words.**
 
-Built because Speechify mangles markdown — tables, code, lists, callouts — and runs paragraphs together with no pauses. Murmur understands Obsidian's markdown shape and renders it for the ear.
+Generic read-aloud tools flatten Markdown into mush. Murmur understands the common shapes of an Obsidian note, adds pauses around headings, paragraphs, and list items, and keeps your place visible while you listen.
 
-## Features
+![Murmur highlighting spoken text while its player advances](assets/screenshots/murmur-karaoke-demo.gif)
 
-- Read whole note or just selected text
-- Karaoke-style highlight tracking the spoken word in source mode and Live Preview
-- Top-of-file player (or a draggable floating widget) with play/pause, segment skip, stop, and 0.75×–2× speed
-- Two widget themes: a minimal inline chip, or a tape-deck with pixel-grid timer and rolling speed wheel
-- Disk cache so re-reading a note is instant and free
-- Pauses around headings, between paragraphs, between list items
-- Strips Obsidian-specific syntax (wikilinks, embeds, callouts, highlights, comments, task checkboxes) so it sounds like prose, not code
+*Captured in Obsidian 1.12.7 with Murmur's inline player.*
 
-## Affiliate disclosure
-
-Some links in this README and in Murmur's settings tab are referral links — if you sign up through them I receive a small commission, at no extra cost to you. Currently this applies only to **ElevenLabs**; the other providers (Inworld, Fish Audio, Cartesia, OpenAI) are linked through plain non-referral URLs.
-
-Referral links are marked `(referral)` everywhere they appear. You can sign up directly at any provider's website without going through my links — whether you do or not has no effect on the plugin or your account.
-
-## Providers
-
-Pick whichever fits your budget and quality bar. API keys are stored locally using Obsidian's SecretStorage — Murmur never proxies through a server.
-
-| Provider | Strengths | Karaoke precision | Approx. cost |
-| --- | --- | --- | --- |
-| **[ElevenLabs](https://try.elevenlabs.io/0dwmkurqlz4a)** *(referral)* | Highest karaoke precision (true word-level timestamps from the API). Excellent voices. | Per-character | ~$0.05–0.10 / 1K chars |
-| **[Inworld](https://platform.inworld.ai/)** | Currently top of the Artificial Analysis Speech Arena. OpenAI-level pricing. | Synthesized from duration | ~$35 / 1M chars |
-| **[Fish Audio](https://fish.audio/)** | Fast, lots of community voices. | Synthesized from duration | Pay-as-you-go |
-| **[Cartesia](https://cartesia.ai/)** | Low latency, expressive voices. | Synthesized from duration | Pay-as-you-go |
-| **[OpenAI](https://platform.openai.com/)** | Cheapest, six built-in voices. | Synthesized from duration | ~$15 / 1M chars |
-
-Karaoke highlighting works on every provider; ElevenLabs is the only one that returns true per-character alignment, so on the others Murmur synthesizes a uniform alignment from audio duration (still very usable, just slightly less precise on long words).
+> **Before installing:** Murmur is desktop-only and requires Obsidian 1.11.4+, an internet connection, and your own TTS-provider API key. Note text is sent directly to that provider, whose usage may cost money. Murmur itself has no server, account, analytics, or telemetry.
 
 ## Install
 
-### From the community plugins browser (once approved)
+1. In Obsidian, open **Settings → Community plugins → Browse**.
+2. Search for **Murmur**.
+3. Select **Install**, then **Enable**.
 
-1. Settings → Community plugins → Browse
-2. Search for "Murmur"
-3. Install, then Enable
+## What it does
 
-### Manual install
-
-1. Clone this repo into your vault: `<vault>/.obsidian/plugins/murmur/`
-2. `npm install && npm run build`
-3. In Obsidian: Settings → Community plugins → Reload, then enable "Murmur"
-
-## Setup
-
-1. Get an API key from your provider of choice (see the table above for links).
-2. In Obsidian, open Settings → Murmur and pick the provider.
-3. Paste the API key. Pick a voice and model (defaults are sensible).
-4. Optional: hit "Preview" in settings to taste the voice before committing.
-5. Optional: set a max cache size (default 500 MB), pick a widget theme, choose inline vs floating placement.
+- Reads the current note or only the text you select
+- Adds listenable pacing and removes common Obsidian markup before speech generation
+- Highlights spoken text during whole-note playback in Source mode and Live Preview
+- Pauses, skips between spoken segments, seeks within the current segment, and plays from 0.75× to 2× speed
+- Replays unchanged passages from a local cache instead of generating them again
 
 ## Use
 
-- Click the audio-lines icon in the ribbon, or
-- Run "Read note (or selection)" from the command palette (`Cmd+P`), or
-- Assign a hotkey to that command in Settings → Hotkeys
+1. Open **Settings → Murmur**, choose a provider, and add its API key.
+2. Click Murmur's ribbon icon or run **Read note (or selection)** from the command palette.
+3. Optionally assign that command a hotkey under **Settings → Hotkeys**.
 
-If text is selected, it reads the selection. Otherwise it reads the whole note.
+If text is selected, Murmur reads the selection. Otherwise it reads the whole note.
 
-The widget appears at the top of the file (after frontmatter, if any) with playback controls — or as a draggable floating pane that stays visible everywhere, your choice.
+## Privacy, cost, and cache
 
-## Privacy
+API keys are stored through Obsidian's SecretStorage. Murmur's ordinary `data.json` contains only a reference to the stored secret, not the key itself.
 
-Murmur sends your note text — or just the selected portion — to whichever TTS provider you've configured, over HTTPS, in order to generate audio. API keys are managed through Obsidian's SecretStorage; Murmur's `data.json` stores only the selected secret's name, not its value.
+Generated MP3 audio and alignment data are cached unencrypted under `<vault>/.obsidian/plugins/murmur/cache/`, up to 500 MB by default. Depending on your vault setup, those files may be included in backups or sync. You can change the limit or clear the cache from **Settings → Murmur**.
 
-No analytics, no telemetry, no other network calls. The only outbound traffic is to the TTS provider you've selected.
+The plugin is free and open source. Generating new audio uses your provider account and may incur provider charges; replaying cached audio does not.
 
-## Limitations
+## Providers
 
-- **Desktop only** for now (`isDesktopOnly: true`). Mobile audio streaming inside Obsidian's WebView is too fragile.
-- **Reading view** (pure preview) has no highlight or widget — those need a CodeMirror editor. Audio still plays.
-- **Tables and code blocks** are announced ("Table with N rows, skipped") rather than read. Tunable in a future release.
-- **Highlight position** is accurate within typical formatting but may drift on heavily-edited or non-standard markdown.
-- **Fish Audio** bills API usage from a separate wallet from your Plus/Pro subscription — fund it at fish.audio/go-api or you'll get HTTP 402 errors. Murmur surfaces this in the error message.
+All five providers require their own API key. Their pricing, language support, and data policies apply.
+
+**Affiliate disclosure:** I may earn a commission at no extra cost if you sign up for ElevenLabs through the marked link. It does not affect the plugin. The other links are ordinary links.
+
+| Provider | Murmur integration |
+| --- | --- |
+| **[ElevenLabs](https://try.elevenlabs.io/0dwmkurqlz4a)** *(affiliate)* | Uses API character timestamps for the most precise highlighting; requires a voice ID |
+| **[Inworld](https://platform.inworld.ai/)** | Includes built-in voice and model choices; highlighting uses uniform estimated timing |
+| **[Fish Audio](https://fish.audio/)** | Uses a Fish Audio voice-reference ID; highlighting uses uniform estimated timing |
+| **[Cartesia](https://cartesia.ai/)** | Requires a Cartesia voice ID; highlighting uses uniform estimated timing |
+| **[OpenAI](https://platform.openai.com/)** | Murmur currently exposes six built-in voices; highlighting uses uniform estimated timing |
+
+Fish Audio API usage is billed from a separate API wallet, even if you already have a Fish Audio subscription.
+
+## Current limitations
+
+- **No mobile support.** Obsidian blocks installation because Murmur is currently marked desktop-only.
+- **Selection highlighting is not reliable yet.** Selection playback works, but correct editor highlighting currently requires whole-note playback.
+- **Reading view has no inline player or highlighting.** Audio continues, and a floating controller may remain visible if enabled.
+- **Detected tables and triple-backtick code blocks are announced and skipped**, not narrated.
+- **Non-ElevenLabs highlighting is approximate.** Murmur divides total audio duration uniformly across characters, so the highlighted word can visibly drift during ordinary speech.
 
 ## Development
 
 ```bash
 npm install
-npm run build       # production build
-npm run dev         # esbuild watch mode
+npm test
+npm run lint
+npm run build
 ```
 
-Plugin entry: `src/main.ts`. Build output: `main.js` (committed at release tags only).
+For local testing, clone the repository into `<vault>/.obsidian/plugins/murmur/`, build it, then reload Community plugins in Obsidian.
 
 ## License
 
@@ -96,4 +81,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Support
 
-If Murmur has been useful and you'd like to say thanks: [buymeacoffee.com/kaurimarkkanen](https://buymeacoffee.com/kaurimarkkanen). Entirely optional, deeply appreciated.
+Found a bug or rough edge? [Open an issue](https://github.com/kaurimark/murmur/issues).
+
+If Murmur is useful and you want to support it, you can [buy me a coffee](https://buymeacoffee.com/kaurimarkkanen).

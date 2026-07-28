@@ -13,8 +13,8 @@ export const OPENAI_VOICES = [
 ] as const;
 
 export const OPENAI_MODELS = [
-  { id: "tts-1", label: "tts-1 (cheap, fast)" },
-  { id: "tts-1-hd", label: "tts-1-hd (higher quality)" },
+  { id: "tts-1", label: "tts-1" },
+  { id: "tts-1-hd", label: "tts-1-hd" },
 ] as const;
 
 export class OpenAIProvider implements TTSProvider {

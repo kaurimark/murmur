@@ -3,11 +3,10 @@ import type { TTSGenerateOptions, TTSProvider, TTSResult } from "./types";
 
 const FISHAUDIO_BASE = "https://api.fish.audio/v1";
 
-// Verified against Fish Audio's API reference docs (April 2026):
-// the only `model` header values accepted are `s2-pro` (default, recommended)
-// and `s1` (legacy).
+// Model IDs currently exposed by Murmur. Keep these stable until newer API
+// models are tested end-to-end.
 export const FISHAUDIO_MODELS = [
-  { id: "s2-pro", label: "S2 Pro (newest, recommended)" },
+  { id: "s2-pro", label: "S2 Pro" },
   { id: "s1", label: "S1 (legacy)" },
 ] as const;
 

@@ -236,7 +236,7 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("TTS provider")
       .setDesc(
-        "Inworld TTS 1.5 Max currently tops the Artificial Analysis Speech Arena at OpenAI-level pricing (~$35/1M chars). ElevenLabs gives precise word-level karaoke highlighting but costs ~10× more. Fish Audio and Cartesia are quality alternatives. OpenAI is the cheapest. Karaoke is approximated from audio duration on every provider except ElevenLabs.",
+        "Choose a provider and configure its API key below. ElevenLabs returns character timestamps for precise highlighting. Other providers use uniform timing estimated from the generated audio, so highlighting is approximate. Provider pricing and data policies apply.",
       )
       .addDropdown((dropdown) =>
         dropdown
@@ -347,17 +347,17 @@ export class MurmurSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     const cfg = this.plugin.settings.elevenlabs;
 
-    // Affiliate disclosure: the link below is a referral link. Plain text
-    // marker `(referral)` is shown to users at the point of click. See the
-    // README's "Affiliate disclosure" section for the full disclosure.
+    // Affiliate disclosure appears beside the link at the point of click.
     const apiKeyDesc = createFragment();
-    apiKeyDesc.append("Stored securely by Obsidian. Get one at ");
+    apiKeyDesc.append(
+      "Stored securely by Obsidian. I may earn a commission at no extra cost if you sign up at ",
+    );
     const apiKeyLink = apiKeyDesc.appendChild(createEl("a"));
     apiKeyLink.href = "https://try.elevenlabs.io/0dwmkurqlz4a";
     apiKeyLink.textContent = "elevenlabs.io";
     apiKeyLink.target = "_blank";
     apiKeyLink.rel = "noopener noreferrer";
-    apiKeyDesc.append(" (referral).");
+    apiKeyDesc.append(".");
 
     new Setting(containerEl)
       .setName("ElevenLabs API key")
@@ -383,11 +383,11 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Model")
-      .setDesc("Flash is fast and cheap. Multilingual is higher quality.")
+      .setDesc("Flash prioritizes latency. Multilingual supports more languages.")
       .addDropdown((dropdown) =>
         dropdown
-          .addOption("eleven_flash_v2_5", "Flash v2.5 (fast, cheap)")
-          .addOption("eleven_multilingual_v2", "Multilingual v2 (higher quality)")
+          .addOption("eleven_flash_v2_5", "Flash v2.5")
+          .addOption("eleven_multilingual_v2", "Multilingual v2")
           .setValue(cfg.modelId)
           .onChange(async (value) => {
             cfg.modelId = value;
@@ -519,7 +519,7 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Model")
-      .setDesc("S2 Pro is Fish Audio's current state of the art. S1 is legacy.")
+      .setDesc("Choose a model. The legacy option is retained for compatibility.")
       .addDropdown((dropdown) => {
         for (const m of FISHAUDIO_MODELS) {
           dropdown.addOption(m.id, m.label);
@@ -540,7 +540,7 @@ export class MurmurSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Inworld API key")
       .setDesc(
-        "Stored securely by Obsidian. Get one at platform.Inworld.ai. The on-demand plan includes ~40 free TTS minutes/month — enough to evaluate.",
+        "Stored securely by Obsidian. Create one in the Inworld developer portal.",
       )
       .addComponent((el) =>
         new SecretComponent(this.app, el)
@@ -566,9 +566,7 @@ export class MurmurSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Model")
-      .setDesc(
-        "TTS 1.5 Max is the flagship; 1.5 Mini trades a bit of quality for ~30% lower cost and faster response.",
-      )
+      .setDesc("Murmur currently supports Inworld TTS 1.5 Max and 1.5 Mini.")
       .addDropdown((dropdown) => {
         for (const m of INWORLD_MODELS) {
           dropdown.addOption(m.id, m.label);
