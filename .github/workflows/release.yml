@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "*"
+      - "[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: write
@@ -23,9 +23,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
+          package-manager-cache: false
 
       - name: Verify tag and metadata
         env:
@@ -36,16 +34,26 @@ jobs:
 
           const manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
           const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+          const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
           const versions = JSON.parse(readFileSync("versions.json", "utf8"));
           const tag = process.env.RELEASE_TAG;
 
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag ?? "")) {
+            throw new Error(`Tag ${tag} is not a bare stable version`);
+          }
           if (manifest.version !== tag || packageJson.version !== tag) {
             throw new Error(`Tag ${tag} does not match manifest/package version`);
+          }
+          if (packageLock.version !== tag || packageLock.packages[""]?.version !== tag) {
+            throw new Error(`Tag ${tag} does not match package-lock version`);
           }
           if (versions[tag] !== manifest.minAppVersion) {
             throw new Error(`versions.json does not map ${tag} to ${manifest.minAppVersion}`);
           }
           NODE
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Test
         run: npm test
