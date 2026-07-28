@@ -230,6 +230,10 @@ export class MurmurSettingTab extends PluginSettingTab {
   }
 
   display(): void {
+    this.renderSettings();
+  }
+
+  private renderSettings(): void {
     const { containerEl } = this;
     containerEl.empty();
 
@@ -249,7 +253,7 @@ export class MurmurSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.provider = value as ProviderId;
             await this.plugin.saveSettings();
-            this.display();
+            this.renderSettings();
           }),
       );
 
@@ -338,7 +342,7 @@ export class MurmurSettingTab extends PluginSettingTab {
       .addButton((btn) =>
         btn.setButtonText("Clear cache").onClick(async () => {
           await this.plugin.cache.clear();
-          this.display();
+          this.renderSettings();
         }),
       );
   }

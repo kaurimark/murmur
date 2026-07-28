@@ -3,8 +3,8 @@
  * when the widget is mounted to document.body instead of the editor.
  * ============================================================================= */
 
-.murmur-floating {
-  position: fixed !important;
+.murmur-widget-outer.murmur-floating {
+  position: fixed;
   z-index: 1000;
   /* Position is driven by CSS variables set from JS during mount + drag.
    * Using variables (instead of inline left/top) lets the no-static-styles
@@ -13,7 +13,7 @@
   top: var(--murmur-y, 0);
   /* Inline mode adds padding-bottom for spacing from the H1; floating mode
    * doesn't need that. */
-  padding-bottom: 0 !important;
+  padding-bottom: 0;
   user-select: none;
 }
 
@@ -45,10 +45,15 @@
 
 /* Cursor while actively dragging — applied to body so it persists across the
  * drag even when the pointer crosses out of the widget. */
-.murmur-floating-dragging,
-.murmur-floating-dragging * {
-  cursor: grabbing !important;
-  user-select: none !important;
+body.murmur-floating-dragging,
+body.murmur-floating-dragging * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+body.murmur-floating-dragging .murmur-widget-outer,
+body.murmur-floating-dragging .murmur-widget-outer * {
+  cursor: grabbing;
 }
 
 .murmur-active {
@@ -163,10 +168,10 @@
   color: var(--text-faint);
 }
 
-.murmur-chip button {
+.murmur-widget-outer .murmur-chip button {
   appearance: none;
   -webkit-appearance: none;
-  box-shadow: none !important;
+  box-shadow: none;
   outline: none;
   font-family: inherit;
 }
@@ -176,25 +181,25 @@
   outline-offset: 1px;
 }
 
-.murmur-chip-primary {
+.murmur-widget-outer .murmur-chip-primary {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
   border-radius: 999px;
-  border: none !important;
-  background: var(--text-normal) !important;
-  color: var(--background-primary) !important;
+  border: none;
+  background: var(--text-normal);
+  color: var(--background-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
+  padding: 0;
   cursor: pointer;
 }
 
-.murmur-chip-primary .svg-icon {
+.murmur-widget-outer .murmur-chip-primary .svg-icon {
   width: 10px;
   height: 10px;
-  color: var(--background-primary) !important;
+  color: var(--background-primary);
   stroke: currentColor;
 }
 
@@ -213,30 +218,30 @@
   gap: 2px;
 }
 
-.murmur-chip-icon-btn {
+.murmur-widget-outer .murmur-chip-icon-btn {
   width: 22px;
   height: 22px;
   flex-shrink: 0;
-  border: none !important;
-  background: transparent !important;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
+  padding: 0;
   cursor: pointer;
 }
 
-.murmur-chip-icon-btn:hover:not(:disabled) {
-  background: var(--background-modifier-hover) !important;
+.murmur-widget-outer .murmur-chip-icon-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.murmur-chip-icon-btn:disabled {
+.murmur-widget-outer .murmur-chip-icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  background: transparent !important;
+  background: transparent;
 }
 
 .murmur-chip-icon-btn .svg-icon {
@@ -244,7 +249,7 @@
   height: 11px;
 }
 
-.murmur-chip-close {
+.murmur-widget-outer .murmur-chip-close {
   color: var(--text-faint);
 }
 
@@ -295,11 +300,11 @@
   animation: murmur-shimmer 1.2s ease-in-out infinite;
 }
 
-.murmur-chip-speed {
+.murmur-widget-outer .murmur-chip-speed {
   height: 22px;
-  padding: 0 6px !important;
-  border: none !important;
-  background: transparent !important;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   font-family: inherit;
   font-size: 11px;
@@ -308,8 +313,8 @@
   flex-shrink: 0;
 }
 
-.murmur-chip-speed:hover {
-  background: var(--background-modifier-hover) !important;
+.murmur-widget-outer .murmur-chip-speed:hover {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
@@ -386,22 +391,22 @@
   font-family: var(--font-interface, system-ui, -apple-system, sans-serif);
 }
 
-.murmur-deck-disc {
+.murmur-widget-outer .murmur-deck-disc {
   width: 36px;
   height: 36px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: none !important;
-  background: var(--text-normal) !important;
-  color: var(--background-primary) !important;
+  border: none;
+  background: var(--text-normal);
+  color: var(--background-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
+  padding: 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  box-shadow: none !important;
+  box-shadow: none;
   outline: none;
 }
 
@@ -412,18 +417,18 @@
 
 /* Force the disc icon visible against the dark disc fill, regardless of
  * theme overrides on `button` or `svg` elements. */
-.murmur-deck-disc svg {
+.murmur-widget-outer .murmur-deck-disc svg {
   width: 14px;
   height: 14px;
-  fill: var(--background-primary) !important;
+  fill: var(--background-primary);
 }
 
-.murmur-deck-disc svg rect {
-  fill: var(--background-primary) !important;
+.murmur-widget-outer .murmur-deck-disc svg rect {
+  fill: var(--background-primary);
 }
 
-.murmur-deck-icon-btn svg rect {
-  fill: currentColor !important;
+.murmur-widget-outer .murmur-deck-icon-btn svg rect {
+  fill: currentColor;
 }
 
 .murmur-deck-skip {
@@ -433,34 +438,34 @@
   flex-shrink: 0;
 }
 
-.murmur-deck-icon-btn {
+.murmur-widget-outer .murmur-deck-icon-btn {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-  border: none !important;
-  background: transparent !important;
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   border-radius: 4px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 !important;
+  padding: 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  box-shadow: none !important;
+  box-shadow: none;
   outline: none;
 }
 
-.murmur-deck-icon-btn:hover:not(:disabled) {
-  background: var(--background-modifier-hover) !important;
+.murmur-widget-outer .murmur-deck-icon-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.murmur-deck-icon-btn:disabled {
+.murmur-widget-outer .murmur-deck-icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  background: transparent !important;
+  background: transparent;
 }
 
 .murmur-deck-icon-btn:focus-visible {
@@ -474,7 +479,7 @@
   height: 16px;
 }
 
-.murmur-deck-close {
+.murmur-widget-outer .murmur-deck-close {
   color: var(--text-faint);
 }
 
@@ -519,13 +524,13 @@
   border-radius: 999px;
 }
 
-.murmur-deck-speed {
+.murmur-widget-outer .murmur-deck-speed {
   font-family: "Departure Mono", "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   font-size: 13px;
-  background: transparent !important;
-  border: none !important;
+  background: transparent;
+  border: none;
   color: var(--text-muted);
-  padding: 4px 6px !important;
+  padding: 4px 6px;
   height: 26px;
   cursor: pointer;
   flex-shrink: 0;
@@ -533,7 +538,7 @@
   border-radius: 4px;
   appearance: none;
   -webkit-appearance: none;
-  box-shadow: none !important;
+  box-shadow: none;
   outline: none;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
@@ -541,8 +546,8 @@
   line-height: 1;
 }
 
-.murmur-deck-speed:hover {
-  background: var(--background-modifier-hover) !important;
+.murmur-widget-outer .murmur-deck-speed:hover {
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 

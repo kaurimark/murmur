@@ -14,9 +14,10 @@ export default [
       },
     },
     rules: {
-      // Declarative settings are an optional Obsidian 1.13+ API that is still
-      // limited to insider builds. Murmur keeps its 1.11-compatible imperative
-      // tab until 1.13 becomes the stable minimum.
+      // Murmur keeps its imperative settings tab while Obsidian 1.11 remains
+      // supported. A proper declarative migration must preserve the custom
+      // SecretComponent controls and provider-dependent settings rather than
+      // returning dummy definitions merely to silence the review scanner.
       "obsidianmd/settings-tab/prefer-setting-definitions": "off",
       // Sentence case rule needs to know our domain-specific proper nouns
       // and acronyms. Without this, brand names like "ElevenLabs" get flagged

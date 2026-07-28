@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 — 2026-07-28
+
+- Replaced blanket CSS overrides with plugin-scoped selectors while preserving both player themes and placements.
+- Removed deprecated build and settings-refresh patterns reported by Obsidian's automated review.
+- Added CI-built, cryptographically attested release assets for verifiable downloads.
+
 ## 0.2.1 — 2026-07-28
 
 - Added a real-product motion demo with word highlighting to the README.
