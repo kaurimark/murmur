@@ -34,6 +34,10 @@ Make Murmur genuinely usable in Obsidian Mobile rather than merely removing `isD
 
 **Done when:** Murmur can be installed from Obsidian's Community Plugins browser on mobile and its declared mobile flow works reliably on tested iOS and Android devices.
 
+### Declarative settings without dropping Obsidian 1.11 compatibility
+
+Adopt Obsidian 1.13's searchable `getSettingDefinitions()` API through a real dual-path renderer: `SettingDefinitionRender` entries on 1.13+, with the same definitions rendered imperatively by `display()` on 1.11.4–1.12.x. Preserve `SecretComponent`, provider-dependent controls, cache status, and previews; do not add empty definitions merely to silence the Community warning.
+
 ---
 
 ## 1. Agent-triggered TTS — ambient narration from long-running agents
