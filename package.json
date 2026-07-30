@@ -1,6 +1,6 @@
 {
   "name": "murmur",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Read your notes aloud with karaoke-style highlighting.",
   "main": "main.js",
   "scripts": {

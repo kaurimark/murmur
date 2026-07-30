@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 — 2026-07-30
+
+- Made the top-of-file player visible by default while preserving an explicit opt-out.
+- Added a two-sentence README demo with synchronized Murmur audio.
+
 ## 0.2.2 — 2026-07-28
 
 - Replaced blanket CSS overrides with plugin-scoped selectors while preserving both player themes and placements.

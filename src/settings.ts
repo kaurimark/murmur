@@ -75,7 +75,7 @@ export const DEFAULT_SETTINGS: MurmurSettings = {
     modelId: "s2-pro",
   },
   cacheSizeMB: 500,
-  alwaysShowWidget: false,
+  alwaysShowWidget: true,
   // Tape-deck is the better default — characterful, larger, more usable. Users
   // who want minimal can switch back to inline-chip in settings.
   widgetTheme: "tape-deck",

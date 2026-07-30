@@ -198,3 +198,11 @@ test("merges migrated settings with secure defaults", () => {
   assert.equal(merged.elevenlabs.apiKeySecretId, "");
   assert.equal(merged.cacheSizeMB, 500);
 });
+
+test("shows the player by default without overriding an explicit opt-out", () => {
+  assert.equal(settings.mergeWithDefaults({}).alwaysShowWidget, true);
+  assert.equal(
+    settings.mergeWithDefaults({ alwaysShowWidget: false }).alwaysShowWidget,
+    false,
+  );
+});
