@@ -6,6 +6,10 @@ Generic read-aloud tools flatten Markdown into mush. Murmur understands the comm
 
 ![Murmur highlighting spoken text while its player advances](assets/screenshots/murmur-karaoke-demo.gif)
 
+**Watch with sound**
+
+https://github.com/user-attachments/assets/d440a7c3-ecf0-4c6a-88f8-0aca7bf83dce
+
 *Captured in Obsidian 1.12.7 with Murmur's inline player.*
 
 > **Before installing:** Murmur is desktop-only and requires Obsidian 1.11.4+, an internet connection, and your own TTS-provider API key. Note text is sent directly to that provider, whose usage may cost money. Murmur itself has no server, account, analytics, or telemetry.
